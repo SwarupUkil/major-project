@@ -1,9 +1,47 @@
-// CS 30 Final
+// Grid-Based Game Assignment
 // Swarup Ukil
 // January 3rd, 2021
 //
+// Grid Game:
+//   Building upon the interactive scene, the game at it's current
+//   status is a good representation of the how the final game will
+//   feel. There are two 2D arrays used in the game, one is purely
+//   for organizational sake because it is going to hold the current 
+//   and all future map information. The second is the map used for 
+//   this current phase of the boss fight, which is a tiled floor that 
+//   breaks away when the player steps on it; only to return ten seconds later. 
+//   *Recommend playing at 90% zoom
+//
+// Controls:
+//   WASD - basic movement
+//   Spacebar - this in conjuction with the WASD keys will dash the player
+//              in that direction
+//   Left Click - shoots a bullet
+//   Right Click - holding it down will allow a precision shot, it will occur
+//                 after releasing the right click when the line turns yellow
+//
+// Extra for Experts:
+//    As stated on the assignment page, it's purely about how far
+//    this project was taken, these are a few things I believe really
+//    added quality to my project:
+//
+//   -Attacks, dashing, walking all have sound effects
+//   -There is a "title", "you lost", and "you win" screen.
+//   -The "title" screen and "you lost" screen has dialogue if you wait for it
+//   -There is an animation for the boss' transformation into invincibility mode 
+//   -The current phase of the boss fight is functional
+//   -There is a revive system
+//   -Healthbars are functional
+//   -The boundaries system is pretty capable, it can keep the player within
+//    the borders of the map for other shapes such as circles(though a bit 
+//    underused on the current version of the game, but it does work)
+//   -Collision detection of attacks and like bullet on bullet is functional
 
 
+
+// Phase Variables
+let phase = 0;
+let phaseBool = [1, 0, 0];
 
 // Player variables
 let x, y;
@@ -41,6 +79,8 @@ let lineColour = "white";
 // Boss character variables
 let boss;
 let bossDefenceState = "stay";
+let waveAttackTime = 3000;
+let lastWave = 5000, waveTimer = 5000;
 
 const BOSHEALTH = 100;
 let bossHealth = BOSHEALTH;
@@ -55,12 +95,6 @@ let tilesTimer = 11000, removeTileTimer = 700;
 let storeMaps = [];
 let map;
 
-let waveAttackTime = 3000;
-let lastWave = 5000, waveTimer = 5000;
-
-let phase = 0;
-let phaseBool = [1, 0, 0];
-
 // Animation variables
 let inAnimation = false;
 let aniTime;
@@ -72,7 +106,6 @@ let textBool = false;
 let textTimer = 0, textTimerCheck = 1000;
 let myFont;
 
-
 // Music, Dialogue, and Sounds
 let makeThisRightSong;
 let dangerSong;
@@ -81,7 +114,7 @@ let dialogue;
 let titleScreenDialogue = [];
 let titleTimer = 3000, titleTimerCheck = 10000, titleIndex = 0;
 let deathDialogue = [];
-let deathTimer = 0, deathTimerCheck = 2500, deathDialogueBool = true;
+let deathTimer = 0, deathTimerCheck = 750, deathDialogueBool = true;
 
 let bulletSound;
 let preciseBulletSound;
@@ -107,7 +140,7 @@ class Boss{
     this.colour = "blue";
     this.invinceColour = "gold";
     this.arr = []; // stores the boss' bullets
-    this.waveArr = [];
+    this.waveArr = []; // stores the boss' waves
     this.radius = 2.1 * radius;
     this.invincibilityMode = false;
   }
@@ -163,6 +196,7 @@ class Boss{
   }
 }
 
+// The wave is a type of attack the boss can do.
 class Wave{
   constructor(){
     this.xPos = boss.xPos;
@@ -230,9 +264,9 @@ function preload(){
   preciseBulletSound = loadSound("assets/Sounds/Precise Bullet Sound Effect.mp3");
   bossBulletSound = loadSound("assets/Sounds/Boss Bullet Sound Effect.mp3");
   waveSound = loadSound("assets/Sounds/Wave Sound Effect.mp3");
-  dashSound = loadSound("assets/Sounds/Dash Sound Effect.mp3");;
-  hitSound = loadSound("assets/Sounds/Hit Sound Effect.mp3");;
-  tileSound = loadSound("assets/Sounds/Tile Walk Sound Effect.mp3");;
+  dashSound = loadSound("assets/Sounds/Wave Sound Effect.mp3");
+  hitSound = loadSound("assets/Sounds/Hit Sound Effect.mp3");
+  tileSound = loadSound("assets/Sounds/Tile Walk Sound Effect.mp3");
   myFont = loadFont("assets/SparkleFilled.ttf");
 
   dialogue = loadSound("assets/Dialogue/Time to wake up.ogg");
@@ -252,10 +286,12 @@ function preload(){
   deathDialogue.push(dialogue);
   
   // adjust volume
-  tileSound.setVolume(6.0);
+  tileSound.setVolume(3.0);
   tileSound.rate(1.75);
   hitSound.setVolume(2.5); // not a very good sound, should be replaced in the future
   bulletSound.setVolume(0.7);
+  dashSound.setVolume(0.7);
+  dashSound.rate(1.5);
   bossBulletSound.setVolume(0.5);
 }
 
@@ -267,7 +303,6 @@ function setup(){
   x = windowWidth / 2;
   y = windowHeight / 2;
   boss = new Boss();
-  
   dangerSong.loop();
 }
 
@@ -316,14 +351,14 @@ function phases(){
     }
   }
 
-  // Spawns in the default game mechanics if the we are on a gameplay screen.
+  // Spawns in the default game mechanics if the we are on a gameplay phase.
   if(!inAnimation && phase > 0){
     userHealthBar();
     bossHealthBar();
     spawnBall();
     tileSoundTrue = false;
     ballMove();
-    if(tileSoundTrue){
+    if(tileSoundTrue){ // Plays the walking on tile sound effect.
       if(!tileSoundPlaying){
         tileSoundPlaying = true;
         tileSound.loop();
@@ -341,7 +376,21 @@ function phases(){
   }
 }
 
+// This function will start the game if any key is pressed.
+function keyPressed(){
+  if(phase === 0){
+    dangerSong.stop();
+    makeThisRightSong.loop();
+    phase = 2;
+    lastWave = millis();
+  }
+}
+
+// This function will play whatever dialogue 
+// is predetermined if the conditions are met.
 function playDialogue(){
+
+  // Plays a title screen dialogue
   if(phase === 0 && titleTimer + titleTimerCheck < millis()){
     titleTimer = millis();
     dialogue = titleScreenDialogue[titleIndex];
@@ -349,6 +398,8 @@ function playDialogue(){
     dialogue.setVolume(13.0);
     dialogue.play();
   }
+
+  // Plays a death screen dialogue
   if(phase === -1 && deathDialogueBool && deathTimer + deathTimerCheck < millis()){
     deathDialogueBool = false;
     dialogue = random(deathDialogue);
@@ -410,7 +461,7 @@ function animation(){
     diameter = height - decrement;
 
     // This is for the flashing animation for the boss' invincibility mode.
-    // Switching from blue to gold progressively faster until the colour is gold for goood.
+    // Switching from blue to gold progressively faster until the colour is gold for good.
     if(aniTime + aniInterval < millis()){
       aniTime = millis();
       aniInterval -= decrement;
@@ -473,6 +524,7 @@ function ballMove(){
     key = "d";
   }
 
+  // If the player is not moving, stop playing the walking sound effect
   if(key != "none"){
     tileSoundTrue = true;
   }
@@ -561,16 +613,6 @@ function keyTyped(){
   userMapCollision("dash", key1, key2);
 }
 
-// This function will start the game if any key is pressed.
-function keyPressed(){
-  if(phase === 0){
-    dangerSong.stop();
-    makeThisRightSong.loop();
-    phase = 2;
-    lastWave = millis();
-  }
-}
-
 // If the user is out of the map boundaries, push them back, this is dependent on the phase.
 function userMapCollision(typeOfMovement, key1, key2){
 
@@ -622,14 +664,19 @@ function userMapCollision(typeOfMovement, key1, key2){
 
     }
   }else{
+    // Keeps looping until the user is within the boundaries.
     while(!checkCollision){
-      if(phase === 2){
+      if(phase === 2){ // phase 2 does not require this check.
         return 0;
       }
+
+      // Iterates over every map object
       for(let i=0; i<storeMaps.length; i++){
         objShape = storeMaps[i].shape;
         obj = storeMaps[i].arr;
         
+        // Checks if the player was on this circle map,
+        // if true then this while loop ends.
         if(objShape === "circ"){
           checkCollision = collideCircleCircle(x, y, 2*radius, obj[0], obj[1], obj[2]);
           if(checkCollision){
@@ -639,20 +686,24 @@ function userMapCollision(typeOfMovement, key1, key2){
             break;
           }
         }
-        
       }
+
       changeDashPos(key1, key2);
     }
-
   }
+
 }
 
+// Makes sure the player is whitin the
+// boundaries of this circular map.
 function userCircCollision(typeOfMovement, obj){
 
   let dotPos = radius + 1;
   let x2 = x;
   let y2 = y;
 
+  // Basically see's if every point around the user
+  // is on the map.
   for(let i=0; i<360; i++){
     x2 = x + cos(i)*dotPos;
     y2 = y + sin(i)*dotPos;
@@ -672,6 +723,7 @@ function userCircCollision(typeOfMovement, obj){
 // Mildly changes the (x,y) values of the user
 // depending on the direction the dash.
 function changeDashPos(key1, key2){
+
   if(key1 === "w"){
     y++;
 
@@ -695,6 +747,7 @@ function changeDashPos(key1, key2){
   }else{
     x--;
   }
+
 }
 
 // Stops the player from escaping the map grid
@@ -770,13 +823,12 @@ function moveBullet(bulletArray, bulletKey, collisionKey){
   collisionCheck(bulletArray, bulletKey, collisionKey);
 }
 
+// Translate ever wave on screen
 function moveWave(waveArray, waveKey, collisionKey){
   
   for(let i=0; i<waveArray.length; i++){
-
     waveArray[i].display();
     waveArray[i].move();
-
     eraseWave(waveArray);
   }
 
@@ -880,6 +932,10 @@ function bossAction(){
   let decrement = 250;
 
   spawnBoss();
+
+  // Phase one: purely shoots bullets at the player at random. 
+  // Phase two: spawn waves in a timely fashion at a random position,
+  //            eventually becomes like phase 1.
   if(phase === 1){
     if(randNum >= 9000){
       boss.shot();
@@ -910,7 +966,7 @@ function spawnBoss(){
 
 // Determines if a collision between obejects have occured.
 function collisionCheck(objectArray, collisionWith, eraseKey){
-  if(invincibilityTimer + invincibilityTimerCheck < millis()){
+  if(invincibilityTimer + invincibilityTimerCheck < millis()){ 
     invincibility = false;
     invincibilityTimerCheck = 0;
   }
@@ -937,6 +993,8 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
       boss.defenceState();
       if(hit){
         eraseBullet(objectArray, i, hit, eraseKey);
+
+        // If the boss is invincible, then nothing happens when it's hit.
         if(!boss.invincibilityMode){
           if(bossDefenceState === "stay"){
             boss.colour = "red";
@@ -953,18 +1011,26 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
     for(let i=0; i<objectArray.length; i++){
       obj = objectArray[i];
 
+      // Checks which object might have collided with the player. 
       if(eraseKey === "bossBullet"){
         hit = collideCircleCircle(obj.xPos, obj.yPos, obj.radius, x, y, 2 * radius);
         dmg = obj.bulletDmg;
       }else if(eraseKey === "circWave"){
-
         hit = collideCircleCircle(obj.xPos, obj.yPos, obj.radius, x, y, 2 * radius);
         let secondHit = collideCircleCircle(obj.xPos, obj.yPos, obj.radius - 4*radius, x, y, 2 * radius);
 
+        // This collision check can be visualized as 2 circles, the wave and
+        // one right behind it. Basically if the user collides with the
+        // the inner circle, then that means the user is past the wave
+        // and so should not take any damage.
         if(hit && secondHit){
           hit = false;
         }
         if(hit && !secondHit){
+
+          // So that the user is not completely annihilated by
+          // one wave attack, the user gains an invincibility for
+          // a few seconds every time he is hit by a wave.
           if(!invincibility){
             dmg = obj.dmg;
             invincibility = true;
@@ -975,14 +1041,13 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
             dmg = 0;
           }
         }
-
       }
 
-      // Checks if the boss' bullet hit the user
+      // Checks if the boss' attack hit the user
       if(hit){
         userHealth -= dmg;
         eraseBullet(objectArray, i, hit, eraseKey);
-        if(dmgTimer + dmgTimerCheck > millis()){
+        if(dmgTimer + dmgTimerCheck > millis() || eraseKey === "bossBullet"){
           colour = "darkred";
         }
         if(dmg > 0){
@@ -1024,9 +1089,6 @@ function bulletOnBulletCollision(){
 
       // Erases the bullets that have collided
       if(hit){
-        /*
-          Add a health bar to the precision bullet such that it'll go through like 5 shots before disappearing
-        */
         eraseBullet(bullets, i, hit, "precisionBullet");
         eraseBullet(boss.arr, j, hit, "bossBullet");
       }
@@ -1044,17 +1106,21 @@ function userHealthBar(){
   let endPosOfRevivePoints = numOfRevives*2*barWidth + 1.1*padding;
 
   // When the user's health reaches 0, use up one revive if possible.
-  if(userHealth <= 0 && numOfRevives > 1){
+  if(userHealth <= 0 && numOfRevives >= 1){
     numOfRevives--;
-    userHealth = PLYRHEALTH;
     resetPhase();
+    userHealth = PLYRHEALTH;
   }
+
+  // When the user used up all their lives,
+  // it results in the game over scenario.
   if(numOfRevives <= 0){
     resetPhase();
     numOfRevives = 0;
     phase = -1;
     makeThisRightSong.stop();
     titleTimer = millis();
+    deathTimer = millis();
   }
 
   // Spawns in the user's current # of health points.
@@ -1072,10 +1138,9 @@ function userHealthBar(){
     rect(i, padding+barHeight, 2*barWidth, barHeight);
     noStroke();
   }
-
 }
 
-// Spawns in the boss' healt bar on screen.
+// Spawns in the boss' health bar on screen.
 function bossHealthBar(){
 
   // This if is needed to make sure the boss' health bar doesn't 
@@ -1085,6 +1150,7 @@ function bossHealthBar(){
     bossHealth = 0;
     phase = -2;
   }
+
   let endPosOfHealthBar = width - 10;
   let padding = 10;
   let barWidth = 200;
@@ -1115,12 +1181,20 @@ function createEmptyGrid(cols, rows){
   return emptyGrid;
 }
 
+// Spawns in the map for the current phase.
 function spawnMap(){
 
-  if(phase <= -1){
+  let obj;
+  let numOfTilesWidth = 15;
+  let numOfTilesHeight = 8;
+  let startHeight, endHeight, startWidth, endWidth, arrPosHeight;
+
+  // There is no map for non-battle phases.
+  if(phase <= 0){
     return 0;
   }
 
+  // Generates the maps for the current phase.
   if(phase === 1 && phaseBool[phase-1] === 0){
     phaseBool[phase-1] = 1;
     map = new Maps("circ");
@@ -1128,12 +1202,9 @@ function spawnMap(){
     storeMaps.push(map);
   }
   if(phase === 2 && phaseBool[phase-1] === 0){
-    //storeMaps.splice(0, storeMaps.length);
     phaseBool[phase-1] = 1;
     map = new Maps("grid");
     tileSize = 40;
-    let numOfTilesWidth = 15;
-    let numOfTilesHeight = 8;
     map.arr.push(numOfTilesWidth, numOfTilesHeight, tileSize);
     storeMaps.push(map);
 
@@ -1143,11 +1214,11 @@ function spawnMap(){
         grid[i].push(1);
       }
     }
-    return 0;
   }
 
+  // Iterates through all the map objects and spawns them in.
   for(let i=0; i<storeMaps.length; i++){
-    let obj = storeMaps[i];
+    obj = storeMaps[i];
 
     if(obj.shape === "circ"){
       fill("red");
@@ -1155,11 +1226,11 @@ function spawnMap(){
     }
     if(obj.shape === "grid"){
       updateGrid(obj.arr[0], obj.arr[1], obj.arr[2]);
-      let startHeight = height/2 - obj.arr[1]*obj.arr[2];
-      let endHeight = height/2 + obj.arr[1]*obj.arr[2];
-      let startWidth = width/2 - obj.arr[0]*obj.arr[2];
-      let endWidth = width/2 + obj.arr[0]*obj.arr[2];
-      let arrPosHeight = 0, arrPosWidth = 0;
+      startHeight = height/2 - obj.arr[1]*obj.arr[2];
+      endHeight = height/2 + obj.arr[1]*obj.arr[2];
+      startWidth = width/2 - obj.arr[0]*obj.arr[2];
+      endWidth = width/2 + obj.arr[0]*obj.arr[2];
+      arrPosHeight = 0, arrPosWidth = 0;
       
       for(let i = startHeight; i < endHeight; i += obj.arr[2]){
         for(let v = startWidth; v < endWidth; v += obj.arr[2]){
@@ -1177,26 +1248,32 @@ function spawnMap(){
 
 }
 
+// This function removes and re-adds tiles to the grid.
 function updateGrid(tileWidth, tileHeight, tileSize){
+  let tileClone;
   let x2 = Math.floor(x);
   let y2 = Math.floor(y);
+
+  // Determines which tile the user is in.
   x2 -= Math.floor(width/2 - tileWidth*tileSize);
   y2 -= Math.floor(height/2 - tileHeight*tileSize);
   x2 = Math.floor(x2/tileSize);
   y2 = Math.floor(y2/tileSize);
 
+  // Determines if the user is on a live tile, else reset phase.
   if(y2 >= 0 && x2 >= 0 && y2 < 2*tileHeight && x2 < 2*tileWidth){
     if(grid[y2][x2] === 1){
       tile.indexX = x2;
       tile.indexY = y2;
       tile.time = millis();
-      let tileClone = JSON.parse(JSON.stringify(tile));
+      tileClone = JSON.parse(JSON.stringify(tile));
       removedTiles.push(tileClone);
     }else{
       resetPhase();
     }
   }
 
+  // Removes the tile the user has stepped on.
   for(let i=0; i<removedTiles.length; i++){
     if(removedTiles[i].time+removeTileTimer <= millis()){
       x2 = removedTiles[i].indexX;
@@ -1207,13 +1284,13 @@ function updateGrid(tileWidth, tileHeight, tileSize){
     }
   }
 
+  // Re-adds the tiles that were removed.
   if(removedTiles.length > 0 && removedTiles[0].time+tilesTimer <= millis()){
     x2 = removedTiles[0].indexX;
     y2 = removedTiles[0].indexY;
     grid[y2][x2] = 1;
     removedTiles.splice(0, 1);
   }
-
 }
 
 // Resets all functionality of the current phase.
@@ -1226,7 +1303,7 @@ function resetPhase(){
     }
   }
 
-  if(bossHealth > 0){
+  if(bossHealth > 0 && userHealth > 0){
     numOfRevives--;
   }
   userHealth = PLYRHEALTH;
