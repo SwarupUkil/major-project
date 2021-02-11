@@ -1,43 +1,36 @@
-// Grid-Based Game Assignment
+// CS 30 Major Project
 // Swarup Ukil
 // January 3rd, 2021
 //
-// Grid Game:
-//   Building upon the interactive scene, the game at it's current
-//   status is a good representation of the how the final game will
-//   feel. There are two 2D arrays used in the game, one is purely
-//   for organizational sake because it is going to hold the current 
-//   and all future map information. The second is the map used for 
-//   this current phase of the boss fight, which is a tiled floor that 
-//   breaks away when the player steps on it; only to return ten seconds later. 
-//   *Recommend playing at 90% zoom
+// CS 30 FINAL TO DO:
+// 
+// - Controls Help Screen
+// - a border around the screen to symbolize your screen needs
+//   to see the boundaries if you want to play the game properly
+// - Easy Mode and normal mode: Arguo(easy) and Captivum(normal) Mode
+// - Perhaps each phase is a different boss. And you're just going down
+//   each level of like a tower. Or it's just the same boss again
+//   and again, just like beating his clones or something.
 //
-// Controls:
-//   WASD - basic movement
-//   Spacebar - this in conjuction with the WASD keys will dash the player
-//              in that direction
-//   Left Click - shoots a bullet
-//   Right Click - holding it down will allow a precision shot, it will occur
-//                 after releasing the right click when the line turns yellow
+// Phases:
+// Pre-1: A walk towards upward out of your prison gate to the
+//        battle grounds.
+// Transition: Text of "You Cannot Escape."
+// 1 - a circle the user stands on, the player simply walks
+//     around the boss and shoots at them 
+// 2 - the map gets bigger with a larger circle and smaller circles
+//     around the screen for the player to jump to.
+// 3 - 
+// 4 - bullet hell phase, the boss stays at the top of the screen,
+//     and unleashes waves and waves of bullets and waves. Like furi
+//     boss one final phase. The map is probably just a really large
+//     circle that takes up most of the screen.
+// 5 - the wave hell from the grid project
 //
-// Extra for Experts:
-//    As stated on the assignment page, it's purely about how far
-//    this project was taken, these are a few things I believe really
-//    added quality to my project:
-//
-//   -Attacks, dashing, walking all have sound effects
-//   -There is a "title", "you lost", and "you win" screen.
-//   -The "title" screen and "you lost" screen has dialogue if you wait for it
-//   -There is an animation for the boss' transformation into invincibility mode 
-//   -The current phase of the boss fight is functional
-//   -There is a revive system
-//   -Healthbars are functional
-//   -The boundaries system is pretty capable, it can keep the player within
-//    the borders of the map for other shapes such as circles(though a bit 
-//    underused on the current version of the game, but it does work)
-//   -Collision detection of attacks and like bullet on bullet is functional
-
-
+// Post Phases:
+// probably create more transitional phases like the player walking
+// up to the boss. The boss says their monologue. 
+// Really make sure the tower aesthetic is there.
 
 // Phase Variables
 let phase = 0;
