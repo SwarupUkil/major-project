@@ -19,7 +19,7 @@ be able to the fight against the boss character over multiple phases.
 - Different map layouts for each phase
 - Win, Lose, and Title Screen
 - Functioning health bars for the boss and user
-- The player and user can be damaged
+- The player and boss can be damaged
 - There is a collision detection/in-general-detection for deleting objects
 - Have a testing room, where the player can test out the game mechanics 
   with a dummy boss
@@ -29,6 +29,6 @@ be able to the fight against the boss character over multiple phases.
 ## Nice To Have
 - Sprites for characters, attacks, the game map 
 - Animations for transitions
-- The boss has an AI that can respond to the players attacks 
+- The boss has an AI that can respond to the players attacks (e.g dodging)
 - Another Boss
 - Some tid-bits of story that hints at what the game is about
