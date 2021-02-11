@@ -5,21 +5,21 @@ be able to the fight against the boss character over multiple phases.
 
 ## Needs To Have
 **Player**
-- The player can walk in any direction
-- Can shoot bullets on left click
-- Able to shoot a precision bullet on a hold right click
-- Ability to dash
+- ~~The player can walk in any direction~~
+- ~~Can shoot bullets on left click~~
+- ~~Able to shoot a precision bullet on a hold right click~~
+- ~~Ability to dash~~
 
 **Boss**
-- The boss can produce attacks
+- ~~The boss can produce attacks~~
 - The boss has at least 4 unique attacks
 
 **Game**
 - At least 3 functioning fight phase (one of which is a bullet hell)
 - Different map layouts for each phase
-- Win, Lose, and Title Screen
-- Functioning health bars for the boss and user
-- The player and boss can be damaged
+- ~~Win, Lose, and Title Screen~~
+- ~~Functioning health bars for the boss and user~~
+- ~~The player and boss can be damaged~~
 - There is a collision detection/in-general-detection for deleting objects
 - Have a testing room, where the player can test out the game mechanics 
   with a dummy boss
