@@ -73,7 +73,7 @@ let lineColour = "white";
 let boss;
 let bossDefenceState = "stay";
 let waveAttackTime = 3000;
-let lastWave = 5000, waveTimer = 5000;
+let lastWave = 5000, waveTimer = 3000; // DEBUG: Change back to 5000 waveTimer
 
 const BOSHEALTH = 100;
 let bossHealth = BOSHEALTH;
@@ -133,7 +133,8 @@ class Boss{
     this.colour = "blue";
     this.invinceColour = "gold";
     this.arr = []; // stores the boss' bullets
-    this.waveArr = []; // stores the boss' waves
+    this.circWaveArr = []; // stores the boss' waves
+    this.arcZoneArr = [];
     this.radius = 2.1 * radius;
     this.invincibilityMode = false;
   }
@@ -184,22 +185,38 @@ class Boss{
     this.xPos = random(xStartRange, xEndRange);
     this.yPos = random(yStartRange, yEndRange);
 
-    this.waveArr.push(new Wave());
+    this.circWave.push(new Wave("circWave"));
     waveSound.play();
+  }
+
+  arcZone(){
+    this.arcZoneArr.push(new Wave("arcZone"));
+    this.arcZoneArr[this.arcZoneArr.length - 1].determineAngle();
   }
 }
 
 // The wave is a type of attack the boss can do.
 class Wave{
-  constructor(){
+  constructor(waveType){
     this.xPos = boss.xPos;
     this.yPos = boss.yPos;
     this.radius = boss.radius;
     this.dist = 3;
     this.dmg = 5;
     this.speed = 5;
+    this.waveType = waveType;
+    this.startAngle;
+    this.endAngle;
+    this.arcDist = 3;
   }
   display(){ // displays the wave
+    if(this.waveType === "circWave"){
+      this.displayCircWave();
+    }else if(this.waveType === "arcZone"){
+      this.displayArcZone();
+    }
+  }
+  displayCircWave(){
     fill(0, 0);
     stroke(50, 255, 255, 150);
     strokeWeight(7);
@@ -208,8 +225,31 @@ class Wave{
     strokeWeight(1);
     noStroke();
   }
+  displayArcZone(){
+    fill("purple");
+    noStroke();
+    arc(this.xPos, this.yPos, this.radius, this.radius, this.startAngle, this.endAngle);
+    stroke("black");
+    strokeWeight(1);
+    noStroke();
+  }
   move(){
     this.radius += this.speed;
+  }
+  determineAngle(){
+    let sideA = this.xPos - x;
+    let sideB = this.yPos - y;
+    let hypo = sqrt(sideA**2 + sideB**2);
+    let theAngle = acos(sideA / hypo);
+    // if the y position of the attack is below the user's y pos
+    // both values must be inverted and swapped.
+    if(sideB < 0){
+      this.startAngle = -1*(theAngle - this.arcDist);
+      this.endAngle = -1*(theAngle + this.arcDist);
+    }else{
+      this.startAngle = theAngle + this.arcDist;
+      this.endAngle = theAngle - this.arcDist;
+    }
   }
 }
 
@@ -330,7 +370,9 @@ function phases(){
       removeTileTimer = aniInterval*10 + textTimerCheck;
     }
 
-    inAnimation = true;
+    inAnimation = false; // @ Debugged: Normal is true and line 372 does not exist
+    aniInterval = 0;
+
     animation();
 
     // Sets up the game for post the animation.
@@ -795,15 +837,16 @@ function move(){
   moveBullet(bullets, "boss", "normalBullet");
   moveBullet(preciseBullets, "boss", "precisionBullet");
   moveBullet(boss.arr, "user", "bossBullet");
-  moveWave(boss.waveArr, "user", "circWave");
+  moveWave(boss.circWaveArr, "user", "circWave");
+  moveWave(boss.arcZoneArr, "user", "arcZone");
 }
 
 // Translate every bullet on screen
-function moveBullet(bulletArray, bulletKey, collisionKey){
+function moveBullet(bulletArray, collisionKey, bulletKey){
   
   for(let i=0; i<bulletArray.length; i++){
     // the precise bullet has a unique display function
-    if(collisionKey === "precisionBullet"){
+    if(bulletKey === "precisionBullet"){
       bulletArray[i].preciseDisplay();
       bulletArray[i].bulletDmg = 10;
     }else{
@@ -813,19 +856,19 @@ function moveBullet(bulletArray, bulletKey, collisionKey){
     eraseBullet(bulletArray, i, "");
   }
   
-  collisionCheck(bulletArray, bulletKey, collisionKey);
+  collisionCheck(bulletArray, collisionKey, bulletKey);
 }
 
 // Translate ever wave on screen
-function moveWave(waveArray, waveKey, collisionKey){
+function moveWave(waveArray, collisionKey, waveKey){
   
   for(let i=0; i<waveArray.length; i++){
     waveArray[i].display();
     waveArray[i].move();
-    eraseWave(waveArray);
+    eraseWave(waveArray, waveKey);
   }
 
-  collisionCheck(waveArray, waveKey, collisionKey);
+  collisionCheck(waveArray, collisionKey, waveKey);
 }
 
 // Determines the velocity the bullets will travel
@@ -873,10 +916,12 @@ function eraseBullet(bulletArray, pos, hit, state){
 }
 
 // Erases any wave that is long off screen.
-function eraseWave(waveArray){
+function eraseWave(waveArray, waveKey){
 
   if(waveArray.length > 0){ // sanity check
-    if(waveArray[0].radius > 2*width){
+    if(waveKey === "circWave" && waveArray[0].radius > 2*width){
+      waveArray.splice(0, 1);
+    }else if(waveKey === "circWave" && waveArray[0].radius > width){
       waveArray.splice(0, 1);
     }
   }
@@ -936,7 +981,8 @@ function bossAction(){
   }else if(phase === 2){
     if(waveTimer >= 1000){
       if(lastWave + waveTimer < millis()){
-        boss.circularWave();
+        // boss.circularWave();
+        boss.arcZone();
         lastWave = millis();
         waveTimer -= decrement;
       }
@@ -1306,8 +1352,9 @@ function resetPhase(){
   boss.invincibilityMode = true;
   lastWave = millis();
   waveTimer = 5000;
-  boss.waveArr.splice(0, boss.waveArr.length);
+  boss.circWaveArr.splice(0, boss.circWaveArr.length);
   boss.arr.splice(0, boss.arr.length);
+  boss.arcZoneArr.splice(0, boss.arcZoneArr.length);
   x = width/2;
   y = boss.yPos + 100;
   removedTiles.splice(0, removedTiles.length);
