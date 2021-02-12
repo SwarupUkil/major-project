@@ -73,7 +73,7 @@ let lineColour = "white";
 let boss;
 let bossDefenceState = "stay";
 let waveAttackTime = 3000;
-let lastWave = 5000, waveTimer = 3000; // DEBUG: Change back to 5000 waveTimer
+let lastWave = 5000, waveTimer = 5000; // DEBUG: Change back to 5000 waveTimer
 
 const BOSHEALTH = 100;
 let bossHealth = BOSHEALTH;
@@ -185,7 +185,7 @@ class Boss{
     this.xPos = random(xStartRange, xEndRange);
     this.yPos = random(yStartRange, yEndRange);
 
-    this.circWave.push(new Wave("circWave"));
+    this.circWaveArr.push(new Wave("circWave"));
     waveSound.play();
   }
 
@@ -370,8 +370,8 @@ function phases(){
       removeTileTimer = aniInterval*10 + textTimerCheck;
     }
 
-    inAnimation = false; // @ Debugged: Normal is true and line 372 does not exist
-    aniInterval = 0;
+    inAnimation = true; // @ Debugged: Normal is true and line after does not exist
+    // aniInterval = 0;
 
     animation();
 
@@ -921,9 +921,10 @@ function eraseWave(waveArray, waveKey){
   if(waveArray.length > 0){ // sanity check
     if(waveKey === "circWave" && waveArray[0].radius > 2*width){
       waveArray.splice(0, 1);
-    }else if(waveKey === "circWave" && waveArray[0].radius > width){
-      waveArray.splice(0, 1);
     }
+    // else if(waveKey === "arcWave" && waveArray[0].radius > width){
+    //   waveArray.splice(0, 1);
+    // }
   }
 }
 
@@ -981,8 +982,8 @@ function bossAction(){
   }else if(phase === 2){
     if(waveTimer >= 1000){
       if(lastWave + waveTimer < millis()){
-        // boss.circularWave();
-        boss.arcZone();
+        boss.circularWave();
+        // boss.arcZone();
         lastWave = millis();
         waveTimer -= decrement;
       }
