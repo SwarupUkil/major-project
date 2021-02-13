@@ -73,7 +73,8 @@ let lineColour = "white";
 let boss;
 let bossDefenceState = "stay";
 let waveAttackTime = 3000;
-let lastWave = 5000, waveTimer = 5000; // DEBUG: Change back to 5000 waveTimer
+let lastWave = 5000, waveTimer = 3000; // DEBUG: Change back to 5000 waveTimer
+let arcZoneAttackTime = 3000;
 
 const BOSHEALTH = 100;
 let bossHealth = BOSHEALTH;
@@ -208,6 +209,8 @@ class Wave{
     this.startAngle;
     this.endAngle;
     this.arcDist = 3;
+    this.theAngle;
+    this.sideB;
   }
   display(){ // displays the wave
     if(this.waveType === "circWave"){
@@ -238,17 +241,17 @@ class Wave{
   }
   determineAngle(){
     let sideA = this.xPos - x;
-    let sideB = this.yPos - y;
-    let hypo = sqrt(sideA**2 + sideB**2);
-    let theAngle = acos(sideA / hypo);
+    this.sideB = this.yPos - y;
+    let hypo = sqrt(sideA**2 + this.sideB**2);
+    this.theAngle = acos(sideA / hypo);
     // if the y position of the attack is below the user's y pos
     // both values must be inverted and swapped.
-    if(sideB < 0){
-      this.startAngle = -1*(theAngle - this.arcDist);
-      this.endAngle = -1*(theAngle + this.arcDist);
+    if(this.sideB < 0){
+      this.startAngle = -1*(this.theAngle - this.arcDist);
+      this.endAngle = -1*(this.theAngle + this.arcDist);
     }else{
-      this.startAngle = theAngle + this.arcDist;
-      this.endAngle = theAngle - this.arcDist;
+      this.startAngle = this.theAngle + this.arcDist;
+      this.endAngle = this.theAngle - this.arcDist;
     }
   }
 }
@@ -370,8 +373,8 @@ function phases(){
       removeTileTimer = aniInterval*10 + textTimerCheck;
     }
 
-    inAnimation = true; // @ Debugged: Normal is true and line after does not exist
-    // aniInterval = 0;
+    inAnimation = false; // @ Debugged: Normal is true and line after does not exist
+    aniInterval = 0;
 
     animation();
 
@@ -921,10 +924,9 @@ function eraseWave(waveArray, waveKey){
   if(waveArray.length > 0){ // sanity check
     if(waveKey === "circWave" && waveArray[0].radius > 2*width){
       waveArray.splice(0, 1);
+    }else if(waveKey === "arcWave" && waveArray[0].radius > width){
+      arcZoneArr.splice(0, 1);
     }
-    // else if(waveKey === "arcWave" && waveArray[0].radius > width){
-    //   waveArray.splice(0, 1);
-    // }
   }
 }
 
@@ -982,8 +984,8 @@ function bossAction(){
   }else if(phase === 2){
     if(waveTimer >= 1000){
       if(lastWave + waveTimer < millis()){
-        boss.circularWave();
-        // boss.arcZone();
+        // boss.circularWave();
+        boss.arcZone();
         lastWave = millis();
         waveTimer -= decrement;
       }
@@ -1018,9 +1020,13 @@ function collisionCheck(objectArray, collisionWith, eraseKey){
 // Plays out the scenario when the user/boss is damaged
 function userBossCollision(objectArray, collisionWith, eraseKey){
 
-  let hit;
+  let hit = false;
   let obj;
   let dmg = 0;
+  let dotPos = radius + 1;
+  let x2 = x;
+  let y2 = y;
+  let val = 0;
 
   // Checks if the collision was with the boss, else it must be the player.
   if(collisionWith === "boss"){
@@ -1079,6 +1085,32 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
             dmgTimer = millis();
           }else{
             dmg = 0;
+          }
+        }
+      }else if(eraseKey === "arcZone"){
+        for(let i=0; i<360; i++){
+          x2 = x + cos(i)*dotPos;
+          y2 = y + sin(i)*dotPos;
+          //(obj.endAngle - obj.startAngle)/2
+          // val = (abs(obj.startAngle) + abs(obj.endAngle))/2;
+          val = ((obj.arcDist*2)/180)*PI;
+          // if(obj.sideB > 0){
+          //     val *= -1;
+          // }
+          hit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2, obj.startAngle+val, 
+                                ((obj.arcDist*2)/180)*PI); //+1?
+
+          if(hit){
+            if(!invincibility){
+              dmg = obj.dmg;
+              invincibility = true;
+              invincibilityTimerCheck = arcZoneAttackTime;
+              invincibilityTimer = millis();
+              dmgTimer = millis();
+            }else{
+              dmg = 0;
+            }
+            break;
           }
         }
       }
@@ -1314,15 +1346,15 @@ function updateGrid(tileWidth, tileHeight, tileSize){
   }
 
   // Removes the tile the user has stepped on.
-  for(let i=0; i<removedTiles.length; i++){
-    if(removedTiles[i].time+removeTileTimer <= millis()){
-      x2 = removedTiles[i].indexX;
-      y2 = removedTiles[i].indexY;
-      grid[y2][x2] = 0;
-    }else{
-      break;
-    }
-  }
+  // for(let i=0; i<removedTiles.length; i++){
+  //   if(removedTiles[i].time+removeTileTimer <= millis()){
+  //     x2 = removedTiles[i].indexX;
+  //     y2 = removedTiles[i].indexY;
+  //     grid[y2][x2] = 0;
+  //   }else{
+  //     break;
+  //   }
+  // }
 
   // Re-adds the tiles that were removed.
   if(removedTiles.length > 0 && removedTiles[0].time+tilesTimer <= millis()){
