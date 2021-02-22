@@ -130,7 +130,7 @@ class Maps{
 class Boss{
   constructor(){
     this.xPos = width / 2;
-    this.yPos = height / 2 - 320;
+    this.yPos = height / 2 - 280;
     this.colour = "blue";
     this.invinceColour = "gold";
     this.arr = []; // stores the boss' bullets
@@ -138,6 +138,8 @@ class Boss{
     this.arcZoneArr = [];
     this.radius = 2.1 * radius;
     this.invincibilityMode = false;
+    this.ellipseWidth = 250;
+    this.ellipseHeight = 166;
   }
   display(){ // displays the boss avatar
     if(this.invincibilityMode){
@@ -211,6 +213,7 @@ class Wave{
     this.arcDist = 3;
     this.theAngle;
     this.sideB;
+    this.arcAngle = 3;
   }
   display(){ // displays the wave
     if(this.waveType === "circWave"){
@@ -231,27 +234,29 @@ class Wave{
   displayArcZone(){
     fill("purple");
     noStroke();
-    arc(this.xPos, this.yPos, this.radius, this.radius, this.startAngle, this.endAngle);
+    angleMode(DEGREES);
+    translate(boss.xPos, boss.yPos);
+    rotate(this.startAngle);
+    arc(0, 0, this.radius, this.radius, -this.arcAngle, this.arcAngle);
     stroke("black");
     strokeWeight(1);
     noStroke();
+    rotate(-this.startAngle);
+    translate(-boss.xPos, -boss.yPos);
   }
   move(){
     this.radius += this.speed;
   }
   determineAngle(){
+    angleMode(RADIANS);
     let sideA = this.xPos - x;
     this.sideB = this.yPos - y;
     let hypo = sqrt(sideA**2 + this.sideB**2);
     this.theAngle = acos(sideA / hypo);
-    // if the y position of the attack is below the user's y pos
-    // both values must be inverted and swapped.
-    if(this.sideB < 0){
-      this.startAngle = -1*(this.theAngle - this.arcDist);
-      this.endAngle = -1*(this.theAngle + this.arcDist);
+    if (this.sideB > 0) {
+      this.startAngle = 180 - this.theAngle/PI * 180;
     }else{
-      this.startAngle = this.theAngle + this.arcDist;
-      this.endAngle = this.theAngle - this.arcDist;
+      this.startAngle = 180 - this.theAngle/PI * 180
     }
   }
 }
@@ -393,7 +398,6 @@ function phases(){
   if(!inAnimation && phase > 0){
     userHealthBar();
     bossHealthBar();
-    spawnBall();
     tileSoundTrue = false;
     ballMove();
     if(tileSoundTrue){ // Plays the walking on tile sound effect.
@@ -408,8 +412,9 @@ function phases(){
       }
     }
     spawnBullet();
-    move();
     bossAction();
+    move();
+    spawnBall();
     displayText();
   }
 }
@@ -840,11 +845,11 @@ function spawnBullet(){
 
 // Translate every object on screen
 function move(){
+  moveWave(boss.circWaveArr, "user", "circWave");
+  moveWave(boss.arcZoneArr, "user", "arcZone");
   moveBullet(bullets, "boss", "normalBullet");
   moveBullet(preciseBullets, "boss", "precisionBullet");
   moveBullet(boss.arr, "user", "bossBullet");
-  moveWave(boss.circWaveArr, "user", "circWave");
-  moveWave(boss.arcZoneArr, "user", "arcZone");
 }
 
 // Translate every bullet on screen
@@ -927,8 +932,9 @@ function eraseWave(waveArray, waveKey){
   if(waveArray.length > 0){ // sanity check
     if(waveKey === "circWave" && waveArray[0].radius > 2*width){
       waveArray.splice(0, 1);
-    }else if(waveKey === "arcWave" && waveArray[0].radius > width){
-      arcZoneArr.splice(0, 1);
+    }
+    if(waveKey === "arcZone" && waveArray[0].radius > 2*width){
+      boss.arcZoneArr.splice(0, 1);
     }
   }
 }
@@ -975,8 +981,6 @@ function bossAction(){
   let randNum = random(1, 10000);
   let decrement = 250;
 
-  spawnBoss();
-
   // Phase one: purely shoots bullets at the player at random. 
   // Phase two: spawn waves in a timely fashion at a random position,
   //            eventually becomes like phase 1.
@@ -1001,9 +1005,18 @@ function bossAction(){
       }
     }
   }else if(phase === 3){
-    
+    if(random(100) <= 50){
+      fill("purple");
+    }else{
+      fill("blueviolet");
+    }
+    ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
+    if(random(10000) >= 9900){
+      boss.arcZone();
+    }
   }
   
+  spawnBoss();
 }
 
 // Displays the boss on screen
@@ -1028,10 +1041,39 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
   let hit = false;
   let obj;
   let dmg = 0;
-  let dotPos = radius + 1;
+  let dotPos = radius + 0.1;
   let x2 = x;
   let y2 = y;
-  let val = 0;
+
+  if(phase === 3){
+    for(let i=0; i<360; i++){
+      x2 = x + cos(i)*dotPos;
+      y2 = y + sin(i)*dotPos;
+      hit = collidePointEllipse(x2, y2, boss.xPos, boss.yPos, 120, 70);
+      dmg = 10;
+
+      if(hit){
+        if(!invincibility){
+          invincibility = true;
+          invincibilityTimerCheck = arcZoneAttackTime;
+          invincibilityTimer = millis();
+          dmgTimer = millis();
+        }else{
+          dmg = 0;
+        }
+        break;
+      }
+    }
+    if(hit){
+      userHealth -= dmg;
+      if(dmgTimer + dmgTimerCheck > millis() || eraseKey === "bossBullet"){
+        colour = "darkred";
+      }
+      if(dmg > 0){
+        hitSound.play();
+      }
+    }
+  }
 
   // Checks if the collision was with the boss, else it must be the player.
   if(collisionWith === "boss"){
@@ -1096,14 +1138,7 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
         for(let i=0; i<360; i++){
           x2 = x + cos(i)*dotPos;
           y2 = y + sin(i)*dotPos;
-          //(obj.endAngle - obj.startAngle)/2
-          // val = (abs(obj.startAngle) + abs(obj.endAngle))/2;
-          val = ((obj.arcDist*2)/180)*PI;
-          // if(obj.sideB > 0){
-          //     val *= -1;
-          // }
-          hit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2, obj.startAngle+val, 
-                                ((obj.arcDist*2)/180)*PI); //+1?
+          hit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2, obj.startAngle, obj.arcAngle*2);
 
           if(hit){
             if(!invincibility){
