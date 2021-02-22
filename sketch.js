@@ -33,8 +33,8 @@
 // Really make sure the tower aesthetic is there.
 
 // Phase Variables
-let phase = 0;
-let phaseBool = [1, 0, 0];
+let phase = 3;
+let phaseBool = [0, 0, 0];
 
 // Player variables
 let x, y;
@@ -73,10 +73,10 @@ let lineColour = "white";
 let boss;
 let bossDefenceState = "stay";
 let waveAttackTime = 3000;
-let lastWave = 5000, waveTimer = 3000; // DEBUG: Change back to 5000 waveTimer
+let lastWave = 5000, waveTimer = 5000; // DEBUG: Change back to 5000 waveTimer
 let arcZoneAttackTime = 3000;
 
-const BOSHEALTH = 100;
+const BOSHEALTH = 10;
 let bossHealth = BOSHEALTH;
 
 // The map variables
@@ -130,7 +130,7 @@ class Maps{
 class Boss{
   constructor(){
     this.xPos = width / 2;
-    this.yPos = height / 2;
+    this.yPos = height / 2 - 320;
     this.colour = "blue";
     this.invinceColour = "gold";
     this.arr = []; // stores the boss' bullets
@@ -373,8 +373,8 @@ function phases(){
       removeTileTimer = aniInterval*10 + textTimerCheck;
     }
 
-    inAnimation = false; // @ Debugged: Normal is true and line after does not exist
-    aniInterval = 0;
+    inAnimation = true; // @ Debugged: Normal is true and line after does not exist
+    // aniInterval = 0;
 
     animation();
 
@@ -419,8 +419,9 @@ function keyPressed(){
   if(phase === 0){
     dangerSong.stop();
     makeThisRightSong.loop();
-    phase = 2;
-    lastWave = millis();
+    phase = 1;
+    x = width/2;
+    y = height/2;
   }
 }
 
@@ -475,7 +476,7 @@ function displayText(){
   }
   
   // Spawns the text for phase 2.
-  if(phase === 2){
+  if(phase === 2 && !inAnimation){
     if(textBool && textTimer + textTimerCheck > millis()){
       size = height / 2;
       fill("white");
@@ -643,12 +644,14 @@ function keyTyped(){
 
       if(dashTrue){
         dashSound.play();
+        userMapCollision("dash", key1, key2);
+      }else{
+        return 0;
       }
     }
     
   }
   
-  userMapCollision("dash", key1, key2);
 }
 
 // If the user is out of the map boundaries, push them back, this is dependent on the phase.
@@ -701,7 +704,7 @@ function userMapCollision(typeOfMovement, key1, key2){
       }
 
     }
-  }else{
+  }else if(typeOfMovement === "dash"){
     // Keeps looping until the user is within the boundaries.
     while(!checkCollision){
       if(phase === 2){ // phase 2 does not require this check.
@@ -984,8 +987,8 @@ function bossAction(){
   }else if(phase === 2){
     if(waveTimer >= 1000){
       if(lastWave + waveTimer < millis()){
-        // boss.circularWave();
-        boss.arcZone();
+        boss.circularWave();
+        // boss.arcZone();
         lastWave = millis();
         waveTimer -= decrement;
       }
@@ -997,6 +1000,8 @@ function bossAction(){
         boss.shot();
       }
     }
+  }else if(phase === 3){
+    
   }
   
 }
@@ -1217,7 +1222,16 @@ function bossHealthBar(){
 
   // This if is needed to make sure the boss' health bar doesn't 
   // bleed past the set boundaries set for it.
-  if(bossHealth < 0){
+  if(bossHealth < 0 && phase == 1){
+    if(numOfRevives < 3){
+      numOfRevives++;
+    }
+    lastWave = millis();
+    phase = 2;
+    resetPhase();
+    bossHealth = BOSHEALTH;
+  }
+  if(bossHealth < 0 && phase == 2){
     resetPhase();
     bossHealth = 0;
     phase = -2;
@@ -1273,7 +1287,15 @@ function spawnMap(){
     map.arr.push(width/2, height/2, 400);
     storeMaps.push(map);
   }
+  if(phase === 3 && phaseBool[phase-1] === 0){
+    storeMaps.splice(0, storeMaps.length);
+    phaseBool[phase-1] = 1;
+    map = new Maps("circ");
+    map.arr.push(width/2, height/2, 700);
+    storeMaps.push(map);
+  }
   if(phase === 2 && phaseBool[phase-1] === 0){
+    storeMaps.splice(0, storeMaps.length);
     phaseBool[phase-1] = 1;
     map = new Maps("grid");
     tileSize = 40;
@@ -1346,15 +1368,15 @@ function updateGrid(tileWidth, tileHeight, tileSize){
   }
 
   // Removes the tile the user has stepped on.
-  // for(let i=0; i<removedTiles.length; i++){
-  //   if(removedTiles[i].time+removeTileTimer <= millis()){
-  //     x2 = removedTiles[i].indexX;
-  //     y2 = removedTiles[i].indexY;
-  //     grid[y2][x2] = 0;
-  //   }else{
-  //     break;
-  //   }
-  // }
+  for(let i=0; i<removedTiles.length; i++){
+    if(removedTiles[i].time+removeTileTimer <= millis()){
+      x2 = removedTiles[i].indexX;
+      y2 = removedTiles[i].indexY;
+      grid[y2][x2] = 0;
+    }else{
+      break;
+    }
+  }
 
   // Re-adds the tiles that were removed.
   if(removedTiles.length > 0 && removedTiles[0].time+tilesTimer <= millis()){
@@ -1367,32 +1389,42 @@ function updateGrid(tileWidth, tileHeight, tileSize){
 
 // Resets all functionality of the current phase.
 function resetPhase(){
-  
-  // Resets the grid layout
-  for(let i=0; i < grid.length; i++){
-    for(let v=0; v < grid[i].length; v++){
-      grid[i][v] = 1;
+  if(phase == 1){
+    userHealth = PLYRHEALTH;
+    bossHealth = BOSHEALTH;
+    boss.xPos = width / 2;
+    boss.yPos = height / 2;
+    boss.arr.splice(0, boss.arr.length);
+    x = width/2;
+    y = boss.yPos + 100;
+  }
+  if(phase == 2){
+    // Resets the grid layout
+    for(let i=0; i < grid.length; i++){
+      for(let v=0; v < grid[i].length; v++){
+        grid[i][v] = 1;
+      }
     }
-  }
 
-  if(bossHealth > 0 && userHealth > 0){
-    numOfRevives--;
+    if(bossHealth > 0 && userHealth > 0){
+      numOfRevives--;
+    }
+    userHealth = PLYRHEALTH;
+    bossHealth = BOSHEALTH;
+    boss.xPos = width / 2;
+    boss.yPos = height / 2;
+    boss.invincibilityMode = true;
+    lastWave = millis();
+    waveTimer = 5000;
+    boss.circWaveArr.splice(0, boss.circWaveArr.length);
+    boss.arr.splice(0, boss.arr.length);
+    boss.arcZoneArr.splice(0, boss.arcZoneArr.length);
+    x = width/2;
+    y = boss.yPos + 100;
+    removedTiles.splice(0, removedTiles.length);
+    textBool = true;
+    textTimer = millis();
   }
-  userHealth = PLYRHEALTH;
-  bossHealth = BOSHEALTH;
-  boss.xPos = width / 2;
-  boss.yPos = height / 2;
-  boss.invincibilityMode = true;
-  lastWave = millis();
-  waveTimer = 5000;
-  boss.circWaveArr.splice(0, boss.circWaveArr.length);
-  boss.arr.splice(0, boss.arr.length);
-  boss.arcZoneArr.splice(0, boss.arcZoneArr.length);
-  x = width/2;
-  y = boss.yPos + 100;
-  removedTiles.splice(0, removedTiles.length);
-  textBool = true;
-  textTimer = millis();
   tileSound.stop();
   hitSound.stop();
   dashSound.stop();
