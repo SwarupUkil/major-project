@@ -198,6 +198,14 @@ class Boss{
   }
 }
 
+// class BulletHell{
+//   constructor(time){
+//     this.timer = time;
+//     this.interval = 500;
+
+//   }
+// }
+
 // The wave is a type of attack the boss can do.
 class Wave{
   constructor(waveType){
@@ -232,7 +240,11 @@ class Wave{
     noStroke();
   }
   displayArcZone(){
-    fill("purple");
+    if(random(100) >= 0){
+      fill("purple");
+    }else{
+      fill("blueviolet");
+    }
     noStroke();
     angleMode(DEGREES);
     translate(boss.xPos, boss.yPos);
@@ -411,10 +423,10 @@ function phases(){
         tileSound.stop();
       }
     }
-    spawnBullet();
     bossAction();
     move();
     spawnBall();
+    spawnBullet();
     displayText();
   }
 }
@@ -1005,18 +1017,28 @@ function bossAction(){
       }
     }
   }else if(phase === 3){
-    if(random(100) <= 50){
-      fill("purple");
-    }else{
-      fill("blueviolet");
-    }
-    ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
-    if(random(10000) >= 9900){
-      boss.arcZone();
-    }
+    // if(random(100) <= 50){
+    //   fill("purple");
+    // }else{
+    //   fill("blueviolet");
+    // }
+    // ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
+    // if(random(10000) >= 9900){
+    //   boss.arcZone();
+    // }
+    phaseThree();
   }
   
   spawnBoss();
+}
+
+function phaseThree(){
+  // The bullets need to spawn for every ten degrees
+  // The velocity must be determined with a new function
+  // First coords around the boss will be determined in a circle
+  // which will require trigs
+  // Then with that info the bullet Direction func can be modified
+  // to use this new info and give the bullets the values
 }
 
 // Displays the boss on screen
@@ -1257,6 +1279,9 @@ function bossHealthBar(){
 
   // This if is needed to make sure the boss' health bar doesn't 
   // bleed past the set boundaries set for it.
+  if(bossHealth < 0){
+    bossHealth = 0;
+  }
   if(bossHealth < 0 && phase == 1){
     if(numOfRevives < 3){
       numOfRevives++;
@@ -1268,7 +1293,6 @@ function bossHealthBar(){
   }
   if(bossHealth < 0 && phase == 2){
     resetPhase();
-    bossHealth = 0;
     phase = -2;
   }
 
