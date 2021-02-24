@@ -35,6 +35,10 @@
 // Phase Variables
 let phase = 3;
 let phaseBool = [0, 0, 0];
+let bulletHellTimer = 500;
+let bulletHellTimerCheck = 330;
+let alternate = true;
+let invinceBulletsTimer = 0, invinceBulletsAlternate = true;
 
 // Player variables
 let x, y;
@@ -198,13 +202,12 @@ class Boss{
   }
 }
 
-// class BulletHell{
-//   constructor(time){
-//     this.timer = time;
-//     this.interval = 500;
-
-//   }
-// }
+class BulletHell{
+  constructor(time){
+    this.timer = time;
+    this.interval = 500;
+  }
+}
 
 // The wave is a type of attack the boss can do.
 class Wave{
@@ -282,10 +285,15 @@ class Bullet{
     this.yDirection = bulletMovesUp;
     this.radius = radii;
     this.bulletDmg = 1;
+    this.invincibilityMode = false;
   }
   display(){ // displays the normal bullet
     noStroke();
-    fill("white");
+    if(this.invincibilityMode){
+      fill("gold");
+    }else{
+      fill("white");
+    }
     circle(this.xPos, this.yPos, 2 * bRadius);
     noFill();
   }
@@ -1017,12 +1025,12 @@ function bossAction(){
       }
     }
   }else if(phase === 3){
-    // if(random(100) <= 50){
-    //   fill("purple");
-    // }else{
-    //   fill("blueviolet");
-    // }
-    // ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
+    if(random(100) <= 50){
+      fill("purple");
+    }else{
+      fill("blueviolet");
+    }
+    ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
     // if(random(10000) >= 9900){
     //   boss.arcZone();
     // }
@@ -1039,6 +1047,96 @@ function phaseThree(){
   // which will require trigs
   // Then with that info the bullet Direction func can be modified
   // to use this new info and give the bullets the values
+  // radius of the circle will be 100
+  let thisRadius = -100;
+  let velo = 2;
+  let x2 = boss.xPos;
+  let y2 = boss.yPos;
+  let x3 = boss.xPos;
+  let y3 = boss.yPos;
+  let sideA;
+  let hypo;
+  let theta = acos(sideA / hypo);
+  let xBulletSpeed, yBulletSpeed;
+  let add = 10;
+  let invinceBulletsTimerLimit = 7;
+
+  if(bulletHellTimer + bulletHellTimerCheck < millis()){
+
+    alternate = !alternate;
+    invinceBulletsTimer++;
+    // if(invinceBulletsTimer > invinceBulletsTimerLimit){
+    //   invinceBulletsAlternate = !invinceBulletsAlternate;
+    // }
+    if(alternate){
+      add = 5;
+    }else{
+      add = 0;
+    }
+
+    bulletHellTimer = millis();
+    angleMode(DEGREES);
+    for(let i=10 + add; i <= 170 + add; i += 10){
+      x2 = boss.xPos - cos(i)*thisRadius;
+      y2 = boss.yPos - sin(i)*thisRadius;
+      x3 = boss.xPos - cos(i)*(thisRadius+1);
+      y3 = boss.yPos - sin(i)*(thisRadius+1);
+      sideA = x2 - x3;
+      hypo = sqrt(sideA**2 + (y2 - y3)**2);
+      theta = acos(sideA / hypo);
+      xBulletSpeed = velo * cos(theta);
+      yBulletSpeed = velo * sin(theta);
+
+      if(invinceBulletsAlternate && i > 60 && i < 120){
+        boss.shot();
+        boss.arr[boss.arr.length-1].xPos = x2;
+        boss.arr[boss.arr.length-1].yPos = y2;
+        boss.arr[boss.arr.length-1].xIncrement = xBulletSpeed;
+        boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
+        boss.arr[boss.arr.length-1].bulletMovesUp = false;
+      }
+      if(!invinceBulletsAlternate && i >= 120 && invinceBulletsTimerLimit >= 3){
+        boss.shot();
+        boss.arr[boss.arr.length-1].xPos = x2;
+        boss.arr[boss.arr.length-1].yPos = y2;
+        boss.arr[boss.arr.length-1].xIncrement = xBulletSpeed;
+        boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
+        boss.arr[boss.arr.length-1].bulletMovesUp = false;
+      }
+      if(!invinceBulletsAlternate && i <= 60 && invinceBulletsTimerLimit >= 3){
+        boss.shot();
+        boss.arr[boss.arr.length-1].xPos = x2;
+        boss.arr[boss.arr.length-1].yPos = y2;
+        boss.arr[boss.arr.length-1].xIncrement = xBulletSpeed;
+        boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
+        boss.arr[boss.arr.length-1].bulletMovesUp = false;
+      }
+      // boss.shot();
+      // boss.arr[boss.arr.length-1].xPos = x2;
+      // boss.arr[boss.arr.length-1].yPos = y2;
+      // boss.arr[boss.arr.length-1].xIncrement = xBulletSpeed;
+      // boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
+      // boss.arr[boss.arr.length-1].bulletMovesUp = false;
+      if(invinceBulletsTimer > invinceBulletsTimerLimit - 2 && boss.arr.length > 0){
+        
+        if(!invinceBulletsAlternate && i >= 120+add){
+          boss.arr[boss.arr.length-1].invincibilityMode = true;
+        }
+        if(!invinceBulletsAlternate && i <= 60+add){
+          boss.arr[boss.arr.length-1].invincibilityMode = true;
+        }
+        if(invinceBulletsAlternate && i > 60 && i < 120){
+          boss.arr[boss.arr.length-1].invincibilityMode = true;
+        }
+        boss.arr[boss.arr.length-1].bulletDmg = 5;
+      }
+    }
+
+    if(invinceBulletsTimer > invinceBulletsTimerLimit){
+      invinceBulletsTimer = 0;
+      invinceBulletsAlternate = !invinceBulletsAlternate;
+    }
+  }
 }
 
 // Displays the boss on screen
@@ -1071,7 +1169,7 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
     for(let i=0; i<360; i++){
       x2 = x + cos(i)*dotPos;
       y2 = y + sin(i)*dotPos;
-      hit = collidePointEllipse(x2, y2, boss.xPos, boss.yPos, 120, 70);
+      hit = collidePointEllipse(x2, y2, boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
       dmg = 10;
 
       if(hit){
@@ -1207,9 +1305,11 @@ function bulletOnBulletCollision(){
       hit = collideCircleCircle(obj.xPos, obj.yPos, obj.radius, obj2.xPos, obj2.yPos, obj2.radius);
       
       // Erases the bullets that have collided
-      if(hit){
+      if(hit && !obj2.invincibilityMode){
         eraseBullet(bullets, i, hit, "normalBullet");
         eraseBullet(boss.arr, j, hit, "bossBullet");
+      }else{
+        eraseBullet(bullets, i, hit, "normalBullet");
       }
     }
   }
@@ -1222,9 +1322,11 @@ function bulletOnBulletCollision(){
       hit = collideCircleCircle(obj.xPos, obj.yPos, obj.radius, obj2.xPos, obj2.yPos, obj2.radius);
 
       // Erases the bullets that have collided
-      if(hit){
+      if(hit && !obj2.invincibilityMode){
         eraseBullet(bullets, i, hit, "precisionBullet");
         eraseBullet(boss.arr, j, hit, "bossBullet");
+      }else{
+        eraseBullet(bullets, i, hit, "precisionBullet");
       }
     }
   }
