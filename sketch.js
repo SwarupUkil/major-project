@@ -140,6 +140,7 @@ class Boss{
     this.arr = []; // stores the boss' bullets
     this.circWaveArr = []; // stores the boss' waves
     this.arcZoneArr = [];
+    this.arcWaveArr = [];
     this.radius = 2.1 * radius;
     this.invincibilityMode = false;
     this.ellipseWidth = 250;
@@ -200,6 +201,17 @@ class Boss{
     this.arcZoneArr.push(new Wave("arcZone"));
     this.arcZoneArr[this.arcZoneArr.length - 1].determineAngle();
   }
+
+  arcWave(){
+    // velocity = 2;
+    
+    this.arcWaveArr.push(new Wave("arcWave"));
+    this.arcWaveArr[this.arcWaveArr.length - 1].determineAngle();
+    this.arcWaveArr[this.arcWaveArr.length - 1].arcAngle = 50;
+    this.arcWaveArr[this.arcWaveArr.length - 1].radius = 250;
+    this.arcWaveArr[this.arcWaveArr.length - 1].yPos -= 90;
+    // velocity = 10;
+  }
 }
 
 class BulletHell{
@@ -225,12 +237,17 @@ class Wave{
     this.theAngle;
     this.sideB;
     this.arcAngle = 3;
+    this.velocity = 2;
+    this.dx = 0;
+    this.dy = 0;
   }
   display(){ // displays the wave
     if(this.waveType === "circWave"){
       this.displayCircWave();
     }else if(this.waveType === "arcZone"){
       this.displayArcZone();
+    }else if(this.waveType === "arcWave"){
+      this.displayArcWave();
     }
   }
   displayCircWave(){
@@ -250,17 +267,36 @@ class Wave{
     }
     noStroke();
     angleMode(DEGREES);
-    translate(boss.xPos, boss.yPos);
+    translate(this.xPos, this.yPos);
     rotate(this.startAngle);
     arc(0, 0, this.radius, this.radius, -this.arcAngle, this.arcAngle);
     stroke("black");
     strokeWeight(1);
     noStroke();
     rotate(-this.startAngle);
-    translate(-boss.xPos, -boss.yPos);
+    translate(-this.xPos, -this.yPos);
+  }
+  displayArcWave(){
+    fill(0, 0);
+    stroke(50, 255, 255, 150);
+    strokeWeight(30);
+    angleMode(DEGREES);
+    translate(this.xPos, this.yPos);
+    rotate(this.startAngle);
+    arc(0, 0, this.radius, this.radius, -this.arcAngle, this.arcAngle);
+    stroke("black");
+    strokeWeight(1);
+    noStroke();
+    rotate(-this.startAngle);
+    translate(-this.xPos, -this.yPos);
   }
   move(){
-    this.radius += this.speed;
+    if(this.waveType === "arcWave"){
+      this.xPos -= this.dx;
+      this.yPos += this.dy;
+    }else{
+      this.radius += this.speed;
+    }
   }
   determineAngle(){
     angleMode(RADIANS);
@@ -268,6 +304,8 @@ class Wave{
     this.sideB = this.yPos - y;
     let hypo = sqrt(sideA**2 + this.sideB**2);
     this.theAngle = acos(sideA / hypo);
+    this.dx = this.velocity * cos(this.theAngle);
+    this.dy = this.velocity * sin(this.theAngle);
     if (this.sideB > 0) {
       this.startAngle = 180 - this.theAngle/PI * 180;
     }else{
@@ -867,6 +905,7 @@ function spawnBullet(){
 function move(){
   moveWave(boss.circWaveArr, "user", "circWave");
   moveWave(boss.arcZoneArr, "user", "arcZone");
+  moveWave(boss.arcWaveArr, "user", "arcWave");
   moveBullet(bullets, "boss", "normalBullet");
   moveBullet(preciseBullets, "boss", "precisionBullet");
   moveBullet(boss.arr, "user", "bossBullet");
@@ -1031,10 +1070,11 @@ function bossAction(){
       fill("blueviolet");
     }
     ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
-    // if(random(10000) >= 9900){
-    //   boss.arcZone();
-    // }
-    phaseThree();
+    if(random(10000) >= 9900){
+      // boss.arcZone();
+      boss.arcWave();
+    }
+    // phaseThree();
   }
   
   spawnBoss();
@@ -1076,7 +1116,7 @@ function phaseThree(){
 
     bulletHellTimer = millis();
     angleMode(DEGREES);
-    for(let i=10 + add; i <= 170 + add; i += 10){
+    for(let i=20 + add; i <= 160 + add; i += 10){
       x2 = boss.xPos - cos(i)*thisRadius;
       y2 = boss.yPos - sin(i)*thisRadius;
       x3 = boss.xPos - cos(i)*(thisRadius+1);
@@ -1087,23 +1127,10 @@ function phaseThree(){
       xBulletSpeed = velo * cos(theta);
       yBulletSpeed = velo * sin(theta);
 
-      if(invinceBulletsAlternate && i > 60 && i < 120){
-        boss.shot();
-        boss.arr[boss.arr.length-1].xPos = x2;
-        boss.arr[boss.arr.length-1].yPos = y2;
-        boss.arr[boss.arr.length-1].xIncrement = xBulletSpeed;
-        boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
-        boss.arr[boss.arr.length-1].bulletMovesUp = false;
-      }
-      if(!invinceBulletsAlternate && i >= 120 && invinceBulletsTimerLimit >= 3){
-        boss.shot();
-        boss.arr[boss.arr.length-1].xPos = x2;
-        boss.arr[boss.arr.length-1].yPos = y2;
-        boss.arr[boss.arr.length-1].xIncrement = xBulletSpeed;
-        boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
-        boss.arr[boss.arr.length-1].bulletMovesUp = false;
-      }
-      if(!invinceBulletsAlternate && i <= 60 && invinceBulletsTimerLimit >= 3){
+      if((invinceBulletsAlternate && i > 60 && i < 120) ||
+         (!invinceBulletsAlternate && i >= 120) ||
+         (!invinceBulletsAlternate && i <= 60) ||
+         (invinceBulletsTimer > invinceBulletsTimerLimit - 3)){
         boss.shot();
         boss.arr[boss.arr.length-1].xPos = x2;
         boss.arr[boss.arr.length-1].yPos = y2;
