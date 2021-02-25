@@ -39,6 +39,7 @@ let bulletHellTimer = 500;
 let bulletHellTimerCheck = 330;
 let alternate = true;
 let invinceBulletsTimer = 0, invinceBulletsAlternate = true;
+let intervalCount = 0;
 
 // Player variables
 let x, y;
@@ -197,20 +198,17 @@ class Boss{
     waveSound.play();
   }
 
-  arcZone(){
-    this.arcZoneArr.push(new Wave("arcZone"));
+  arcZone(xPos2, yPos2){
+    this.arcZoneArr.push(new Wave("arcZone", xPos2, yPos2));
     this.arcZoneArr[this.arcZoneArr.length - 1].determineAngle();
   }
 
-  arcWave(){
-    // velocity = 2;
-    
-    this.arcWaveArr.push(new Wave("arcWave"));
+  arcWave(xPos2, yPos2){
+    this.arcWaveArr.push(new Wave("arcWave", xPos2, yPos2));
     this.arcWaveArr[this.arcWaveArr.length - 1].determineAngle();
     this.arcWaveArr[this.arcWaveArr.length - 1].arcAngle = 50;
     this.arcWaveArr[this.arcWaveArr.length - 1].radius = 250;
     this.arcWaveArr[this.arcWaveArr.length - 1].yPos -= 90;
-    // velocity = 10;
   }
 }
 
@@ -223,9 +221,11 @@ class BulletHell{
 
 // The wave is a type of attack the boss can do.
 class Wave{
-  constructor(waveType){
+  constructor(waveType, xPos2, yPos2){
     this.xPos = boss.xPos;
     this.yPos = boss.yPos;
+    this.xPos2 = xPos2;
+    this.yPos2 = yPos2;
     this.radius = boss.radius;
     this.dist = 3;
     this.dmg = 5;
@@ -300,8 +300,8 @@ class Wave{
   }
   determineAngle(){
     angleMode(RADIANS);
-    let sideA = this.xPos - x;
-    this.sideB = this.yPos - y;
+    let sideA = this.xPos - this.xPos2;
+    this.sideB = this.yPos - this.yPos2;
     let hypo = sqrt(sideA**2 + this.sideB**2);
     this.theAngle = acos(sideA / hypo);
     this.dx = this.velocity * cos(this.theAngle);
@@ -993,7 +993,14 @@ function eraseWave(waveArray, waveKey){
       waveArray.splice(0, 1);
     }
     if(waveKey === "arcZone" && waveArray[0].radius > 2*width){
-      boss.arcZoneArr.splice(0, 1);
+      waveArray.splice(0, 1);
+    }
+    if(waveKey === "arcWave" && 
+      (waveArray[0].xPos < -0.1*width ||
+      waveArray[0].xPos > 1.1*width ||
+      waveArray[0].yPos < -0.2*height ||
+      waveArray[0].yPos > 1.2*height)){
+        waveArray.splice(0, 1);
     }
   }
 }
@@ -1051,7 +1058,7 @@ function bossAction(){
     if(waveTimer >= 1000){
       if(lastWave + waveTimer < millis()){
         boss.circularWave();
-        // boss.arcZone();
+        // boss.arcZone(x, y);
         lastWave = millis();
         waveTimer -= decrement;
       }
@@ -1072,22 +1079,16 @@ function bossAction(){
     ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
     if(random(10000) >= 9900){
       // boss.arcZone();
-      boss.arcWave();
+      // boss.arcWave();
     }
-    // phaseThree();
+    phaseThree();
   }
   
   spawnBoss();
 }
 
 function phaseThree(){
-  // The bullets need to spawn for every ten degrees
-  // The velocity must be determined with a new function
-  // First coords around the boss will be determined in a circle
-  // which will require trigs
-  // Then with that info the bullet Direction func can be modified
-  // to use this new info and give the bullets the values
-  // radius of the circle will be 100
+
   let thisRadius = -100;
   let velo = 2;
   let x2 = boss.xPos;
@@ -1101,13 +1102,11 @@ function phaseThree(){
   let add = 10;
   let invinceBulletsTimerLimit = 7;
 
-  if(bulletHellTimer + bulletHellTimerCheck < millis()){
+  if(bulletHellTimer + bulletHellTimerCheck < millis() && intervalCount < 16){
 
     alternate = !alternate;
     invinceBulletsTimer++;
-    // if(invinceBulletsTimer > invinceBulletsTimerLimit){
-    //   invinceBulletsAlternate = !invinceBulletsAlternate;
-    // }
+
     if(alternate){
       add = 5;
     }else{
@@ -1115,8 +1114,8 @@ function phaseThree(){
     }
 
     bulletHellTimer = millis();
-    angleMode(DEGREES);
-    for(let i=20 + add; i <= 160 + add; i += 10){
+    for(let i=10 + add; i <= 170 + add; i += 10){
+      angleMode(DEGREES);
       x2 = boss.xPos - cos(i)*thisRadius;
       y2 = boss.yPos - sin(i)*thisRadius;
       x3 = boss.xPos - cos(i)*(thisRadius+1);
@@ -1138,30 +1137,41 @@ function phaseThree(){
         boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
         boss.arr[boss.arr.length-1].bulletMovesUp = false;
       }
-      // boss.shot();
-      // boss.arr[boss.arr.length-1].xPos = x2;
-      // boss.arr[boss.arr.length-1].yPos = y2;
-      // boss.arr[boss.arr.length-1].xIncrement = xBulletSpeed;
-      // boss.arr[boss.arr.length-1].yIncrement = yBulletSpeed;
-      // boss.arr[boss.arr.length-1].bulletMovesUp = false;
-      if(invinceBulletsTimer > invinceBulletsTimerLimit - 2 && boss.arr.length > 0){
+
+      if(intervalCount <= 7){
+        if(invinceBulletsTimer === 8 && !invinceBulletsAlternate && i >= 40 && i < 50){
+          boss.arcWave(x3, y3);
+        }
+        if(invinceBulletsTimer === 8 && !invinceBulletsAlternate && i >= 140 && i < 150){
+          boss.arcWave(x3, y3);
+        }
+        if(invinceBulletsTimer === 7 && invinceBulletsAlternate && i >= 90 && i < 100){
+          boss.arcWave(x3, y3);
+        }
+      }else if(intervalCount <= 15){
+        if(invinceBulletsTimer > invinceBulletsTimerLimit - 2 && boss.arr.length > 0){
         
-        if(!invinceBulletsAlternate && i >= 120+add){
-          boss.arr[boss.arr.length-1].invincibilityMode = true;
+          if(!invinceBulletsAlternate && i >= 120+add){
+            boss.arr[boss.arr.length-1].invincibilityMode = true;
+          }
+          if(!invinceBulletsAlternate && i <= 60+add){
+            boss.arr[boss.arr.length-1].invincibilityMode = true;
+          }
+          if(invinceBulletsAlternate && i > 60 && i < 120){
+            boss.arr[boss.arr.length-1].invincibilityMode = true;
+          }
+          if(boss.arr[boss.arr.length-1].invincibilityMode){
+            boss.arr[boss.arr.length-1].bulletDmg = 5;
+          }
         }
-        if(!invinceBulletsAlternate && i <= 60+add){
-          boss.arr[boss.arr.length-1].invincibilityMode = true;
-        }
-        if(invinceBulletsAlternate && i > 60 && i < 120){
-          boss.arr[boss.arr.length-1].invincibilityMode = true;
-        }
-        boss.arr[boss.arr.length-1].bulletDmg = 5;
       }
+
     }
 
     if(invinceBulletsTimer > invinceBulletsTimerLimit){
       invinceBulletsTimer = 0;
       invinceBulletsAlternate = !invinceBulletsAlternate;
+      intervalCount++;
     }
   }
 }
@@ -1282,7 +1292,7 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
           }
         }
       }else if(eraseKey === "arcZone"){
-        for(let i=0; i<360; i++){
+        for(let i=0; i<360; i+=2){
           x2 = x + cos(i)*dotPos;
           y2 = y + sin(i)*dotPos;
           hit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2, obj.startAngle, obj.arcAngle*2);
@@ -1298,6 +1308,31 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
               dmg = 0;
             }
             break;
+          }
+        }
+      }else if(eraseKey === "arcWave"){
+        for(let i=0; i<360; i+=2){
+          x2 = x + cos(i)*dotPos;
+          y2 = y + sin(i)*dotPos;
+          hit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2 + 15, obj.startAngle, obj.arcAngle*2);
+          let secondHit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2 - 15, obj.startAngle, obj.arcAngle*2);
+
+          if(hit && secondHit){
+            hit = false;
+          }
+          if(hit && !secondHit){
+            if(hit){
+              if(!invincibility){
+                dmg = obj.dmg;
+                invincibility = true;
+                invincibilityTimerCheck = arcZoneAttackTime;
+                invincibilityTimer = millis();
+                dmgTimer = millis();
+              }else{
+                dmg = 0;
+              }
+              break;
+            }
           }
         }
       }
