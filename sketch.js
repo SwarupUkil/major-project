@@ -40,6 +40,9 @@ let bulletHellTimerCheck = 330;
 let alternate = true;
 let invinceBulletsTimer = 0, invinceBulletsAlternate = true;
 let intervalCount = 0;
+let isEasyMode = false;
+let captivusColour = "blue";
+let captivumColour = "red";
 
 // Player variables
 let x, y;
@@ -81,7 +84,7 @@ let waveAttackTime = 3000;
 let lastWave = 5000, waveTimer = 5000; // DEBUG: Change back to 5000 waveTimer
 let arcZoneAttackTime = 3000;
 
-const BOSHEALTH = 10;
+const BOSHEALTH = 100;
 let bossHealth = BOSHEALTH;
 
 // The map variables
@@ -420,6 +423,17 @@ function phases(){
   if(phase <= 0){
     displayText();
     playDialogue();
+
+    if(phase === -4){
+      captivusColour = "white";
+      captivumColour = "white";
+      if(mouseX < width / 2 - 50){
+        captivusColour = "blue";
+      }
+      if(mouseX > width / 2 + 50){
+        captivumColour = "red";
+      }
+    }
   }
 
   // This runs the phase 2 animation.
@@ -479,12 +493,21 @@ function phases(){
 
 // This function will start the game if any key is pressed.
 function keyPressed(){
-  if(phase === 0){
+  if(phase === 0 && keyCode != LEFT_ARROW && keyCode != RIGHT_ARROW){
     dangerSong.stop();
     makeThisRightSong.loop();
-    phase = 1;
+    phase = -4;
     x = width/2;
     y = height/2;
+  }
+}
+
+function mousePressed(){
+  if(phase === -4 && (mouseX < width / 2 - 50) || (mouseX > width / 2 + 50)){
+    if(mouseX < width / 2 - 50){
+      isEasyMode = true;
+    }
+    phase = 1;
   }
 }
 
@@ -536,6 +559,31 @@ function displayText(){
     fill("yellow"); 
     textSize(size);
     text(theText, width/2, height/2);
+  }
+  if(phase === -4){
+    theText = "Captivus";
+    size = height / 10; 
+    fill(captivusColour);
+    textAlign(CENTER, LEFT);
+    textSize(size)
+    text(theText, 500, height/2);
+    
+    theText = "(Easy Mode)";
+    size = height / 25; 
+    textSize(size)
+    text(theText, 500, height/2 + 30);
+
+    theText = "Captivum";
+    size = height / 10; 
+    fill(captivumColour);
+    textAlign(CENTER, LEFT);
+    textSize(size)
+    text(theText, width-500, height/2);
+    
+    theText = "(Normal Mode)";
+    size = height / 25; 
+    textSize(size)
+    text(theText, width-500, height/2 + 30);
   }
   
   // Spawns the text for phase 2.
@@ -758,6 +806,14 @@ function userMapCollision(typeOfMovement, key1, key2){
 
       // If the object and the user are colliding, 
       // then make sure they are not going past the objects boundaries. 
+      if(objShape === "circArc"){
+        checkCollision = collideCircleCircle(x, y, 2*radius, obj[0], obj[1], obj[2]);
+        let checkCollision2 = collideCircleCircle(x, y, 2*radius, obj[3], obj[4], obj[5]);
+        if(checkCollision){
+          userCircArcCollision(typeOfMovement, obj, checkCollision2);
+          break;
+        }
+      }
       if(objShape === "circ"){
         checkCollision = collideCircleCircle(x, y, 2*radius, obj[0], obj[1], obj[2]);
         if(checkCollision){
@@ -779,6 +835,15 @@ function userMapCollision(typeOfMovement, key1, key2){
         objShape = storeMaps[i].shape;
         obj = storeMaps[i].arr;
         
+        if(objShape === "circArc"){
+          checkCollision = collideCircleCircle(x, y, 2*radius, obj[0], obj[1], obj[2]);
+          let checkCollision2 = collideCircleCircle(x, y, 2*radius, obj[3], obj[4], obj[5]);
+          if(checkCollision){
+            if(!userCircArcCollision(typeOfMovement, obj, checkCollision2))
+              checkCollision = false;
+          }
+        }
+
         // Checks if the player was on this circle map,
         // if true then this while loop ends.
         if(objShape === "circ"){
@@ -818,6 +883,31 @@ function userCircCollision(typeOfMovement, obj){
       y -= sin(i)*1;
     }
     if(!collision && typeOfMovement === "dash"){
+      return false;
+    }
+  }
+  return true;
+}
+
+function userCircArcCollision(typeOfMovement, obj, inVoid){
+
+  let dotPos = radius + 1;
+  let x2 = x;
+  let y2 = y;
+
+  // Basically see's if every point around the user
+  // is on the map.
+  for(let i=0; i<360; i++){
+    x2 = x + cos(i)*dotPos;
+    y2 = y + sin(i)*dotPos;
+    let collision = collidePointCircle(x2, y2, obj[0], obj[1], obj[2]);
+    let collision2 = collidePointCircle(x2, y2, obj[3], obj[4], obj[5]);
+
+    if((!collision || collision2) && typeOfMovement === "move"){
+      x -= cos(i)*1;
+      y -= sin(i)*1;
+    }
+    if((!collision || collision2) && typeOfMovement === "dash"){
       return false;
     }
   }
@@ -886,6 +976,16 @@ function spawnBullet(){
       bulletTimer = millis();
       bulletDirection(mouseX, mouseY);
       bullets.push(new Bullet(2 * bRadius));
+
+      if(phase === 1){
+        bullets[bullets.length-1].bulletDmg = 2;
+      }
+      if(phase === 2){
+        bullets[bullets.length-1].bulletDmg = 6;
+      }
+      if(phase === 3 && intervalCount >= 16){
+        bullets[bullets.length-1].bulletDmg = 10;
+      }
     }
     
     // If the user right clicked, initiate the precision line.
@@ -919,6 +1019,16 @@ function moveBullet(bulletArray, collisionKey, bulletKey){
     if(bulletKey === "precisionBullet"){
       bulletArray[i].preciseDisplay();
       bulletArray[i].bulletDmg = 10;
+
+      if(phase === 1){
+        bulletArray[i].bulletDmg = 20;
+      }
+      if(phase === 2){
+        bulletArray[i].bulletDmg = 30;
+      }
+      if(phase === 3 && intervalCount >= 16){
+        bulletArray[i].bulletDmg = 50;
+      }
     }else{
       bulletArray[i].display();
     }
@@ -1023,7 +1133,7 @@ function aimPreciseBullet(){
 
   stroke(lineColour);
   line(x, y, borderX, borderY);
-  stroke(0);
+  noStroke();
 }
 
 // Spawns the precise bullet
@@ -1058,7 +1168,6 @@ function bossAction(){
     if(waveTimer >= 1000){
       if(lastWave + waveTimer < millis()){
         boss.circularWave();
-        // boss.arcZone(x, y);
         lastWave = millis();
         waveTimer -= decrement;
       }
@@ -1078,7 +1187,7 @@ function bossAction(){
     }
     ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
     if(random(10000) >= 9900){
-      // boss.arcZone();
+      // boss.arcZone(x, y);
       // boss.arcWave();
     }
     phaseThree();
@@ -1446,12 +1555,12 @@ function bossHealthBar(){
   if(bossHealth < 0){
     bossHealth = 0;
   }
-  if(bossHealth < 0 && phase == 1){
+  if(bossHealth <= 0 && phase == 1){
     if(numOfRevives < 3){
       numOfRevives++;
     }
     lastWave = millis();
-    phase = 2;
+    phase = 3;
     resetPhase();
     bossHealth = BOSHEALTH;
   }
@@ -1506,9 +1615,12 @@ function spawnMap(){
   // Generates the maps for the current phase.
   if(phase === 1 && phaseBool[phase-1] === 0){
     phaseBool[phase-1] = 1;
-    map = new Maps("circ");
-    map.arr.push(width/2, height/2, 400);
+    map = new Maps("circArc");
+    map.arr.push(width/2, height/2, 600, width/2, height/2, 400);
     storeMaps.push(map);
+    y = height/2 + 300;
+    boss.xPos = width/2;
+    boss.yPos = height/2;
   }
   if(phase === 3 && phaseBool[phase-1] === 0){
     storeMaps.splice(0, storeMaps.length);
@@ -1537,6 +1649,14 @@ function spawnMap(){
   for(let i=0; i<storeMaps.length; i++){
     obj = storeMaps[i];
 
+    if(obj.shape === "circArc"){
+      fill("red");
+      circle(obj.arr[0], obj.arr[1], obj.arr[2]);
+      fill("black");
+      circle(obj.arr[3], obj.arr[4], obj.arr[5]);
+      fill("red");
+      circle(width/2, height/2, 70);
+    }
     if(obj.shape === "circ"){
       fill("red");
       circle(obj.arr[0], obj.arr[1], obj.arr[2]);
@@ -1618,8 +1738,8 @@ function resetPhase(){
     boss.xPos = width / 2;
     boss.yPos = height / 2;
     boss.arr.splice(0, boss.arr.length);
-    x = width/2;
-    y = boss.yPos + 100;
+    x = width / 2;
+    y = height / 2 + 300;
   }
   if(phase == 2){
     // Resets the grid layout
@@ -1639,15 +1759,30 @@ function resetPhase(){
     boss.invincibilityMode = true;
     lastWave = millis();
     waveTimer = 5000;
-    boss.circWaveArr.splice(0, boss.circWaveArr.length);
-    boss.arr.splice(0, boss.arr.length);
-    boss.arcZoneArr.splice(0, boss.arcZoneArr.length);
-    x = width/2;
+    x = width / 2;
     y = boss.yPos + 100;
     removedTiles.splice(0, removedTiles.length);
     textBool = true;
     textTimer = millis();
   }
+  if(phase === 3){
+    boss.xPos = width / 2;
+    boss.yPos = height / 2 - 280;
+    x = width / 2;
+    y = height / 2;
+    bulletHellTimer = millis();
+    bulletHellTimerCheck = 330;
+    alternate = true;
+    invinceBulletsTimer = 0;
+    invinceBulletsAlternate = true;
+    intervalCount = 0;
+  }
+  boss.circWaveArr.splice(0, boss.circWaveArr.length);
+  boss.arr.splice(0, boss.arr.length);
+  boss.arcZoneArr.splice(0, boss.arcZoneArr.length);
+  boss.arcWaveArr.splice(0, boss.arcWaveArr.length);
+  bullets.splice(0, bullets.length);
+
   tileSound.stop();
   hitSound.stop();
   dashSound.stop();
