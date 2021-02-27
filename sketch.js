@@ -33,8 +33,9 @@
 // Really make sure the tower aesthetic is there.
 
 // Phase Variables
-let phase = 3;
+let phase = 2;
 let phaseBool = [0, 0, 0];
+let arcZoneTimer = 0, arcZoneTimerCheck = 3000;
 let bulletHellTimer = 500;
 let bulletHellTimerCheck = 330;
 let alternate = true;
@@ -81,7 +82,7 @@ let lineColour = "white";
 let boss;
 let bossDefenceState = "stay";
 let waveAttackTime = 3000;
-let lastWave = 5000, waveTimer = 5000; // DEBUG: Change back to 5000 waveTimer
+let lastWave = 5000, waveTimer = 5000;
 let arcZoneAttackTime = 3000;
 
 const BOSHEALTH = 100;
@@ -140,6 +141,7 @@ class Boss{
     this.xPos = width / 2;
     this.yPos = height / 2 - 280;
     this.colour = "blue";
+    this.ogColour = this.colour;
     this.invinceColour = "gold";
     this.arr = []; // stores the boss' bullets
     this.circWaveArr = []; // stores the boss' waves
@@ -310,7 +312,7 @@ class Wave{
     this.dx = this.velocity * cos(this.theAngle);
     this.dy = this.velocity * sin(this.theAngle);
     if (this.sideB > 0) {
-      this.startAngle = 180 - this.theAngle/PI * 180;
+      this.startAngle = 180 + this.theAngle/PI * 180;
     }else{
       this.startAngle = 180 - this.theAngle/PI * 180
     }
@@ -436,15 +438,16 @@ function phases(){
     }
   }
 
-  // This runs the phase 2 animation.
-  if(phase === 2 && aniInterval > 0){
+  // This runs the phase 3 animation.
+  if(phase === 3 && aniInterval > 0){
+    background(0);
 
     // Sets up the variables so that everything works post the animation.
     if(aniBool){
       aniBool = false;
       aniTime = millis();
       aniInterval = 250;
-      aniColour = boss.colour;
+      aniColour = boss.ogColour;
       x = width/2;
       y = boss.yPos + 100;
       removeTileTimer = aniInterval*10 + textTimerCheck;
@@ -468,8 +471,6 @@ function phases(){
 
   // Spawns in the default game mechanics if the we are on a gameplay phase.
   if(!inAnimation && phase > 0){
-    userHealthBar();
-    bossHealthBar();
     tileSoundTrue = false;
     ballMove();
     if(tileSoundTrue){ // Plays the walking on tile sound effect.
@@ -487,13 +488,15 @@ function phases(){
     move();
     spawnBall();
     spawnBullet();
+    userHealthBar();
+    bossHealthBar();
     displayText();
   }
 }
 
 // This function will start the game if any key is pressed.
 function keyPressed(){
-  if(phase === 0 && keyCode != LEFT_ARROW && keyCode != RIGHT_ARROW){
+  if(phase === 0){
     dangerSong.stop();
     makeThisRightSong.loop();
     phase = -4;
@@ -503,9 +506,13 @@ function keyPressed(){
 }
 
 function mousePressed(){
-  if(phase === -4 && (mouseX < width / 2 - 50) || (mouseX > width / 2 + 50)){
+  if(phase === -4 && ((mouseX < width / 2 - 50) || (mouseX > width / 2 + 50))){
     if(mouseX < width / 2 - 50){
       isEasyMode = true;
+    }
+    if(isEasyMode){
+      arcZoneTimerCheck = 5000;
+      bulletHellTimerCheck = 700;
     }
     phase = 1;
   }
@@ -586,8 +593,8 @@ function displayText(){
     text(theText, width-500, height/2 + 30);
   }
   
-  // Spawns the text for phase 2.
-  if(phase === 2 && !inAnimation){
+  // Spawns the text for phase 3.
+  if(phase === 3 && !inAnimation){
     if(textBool && textTimer + textTimerCheck > millis()){
       size = height / 2;
       fill("white");
@@ -605,8 +612,8 @@ function animation(){
   let diameter;
   let decrement = 10;
 
-  // Executes the phase 2 animation.
-  if(phase === 2){
+  // Executes the phase 3 animation.
+  if(phase === 3){
     background("brown");
     diameter = height - decrement;
 
@@ -616,10 +623,10 @@ function animation(){
       aniTime = millis();
       aniInterval -= decrement;
 
-      if(aniColour === boss.colour){
+      if(aniColour === boss.ogColour){
         aniColour = boss.invinceColour;
       }else{
-        aniColour = boss.colour;
+        aniColour = boss.ogColour;
       }
     }
     if(aniInterval < 30){
@@ -777,7 +784,7 @@ function userMapCollision(typeOfMovement, key1, key2){
 
 
   // During this phase, the user should only be kept within the grid boundaries.
-  if(phase === 2){
+  if(phase === 3){
     for(let i=0; i<storeMaps.length; i++){
       if(storeMaps[i].shape === "grid"){
 
@@ -808,9 +815,8 @@ function userMapCollision(typeOfMovement, key1, key2){
       // then make sure they are not going past the objects boundaries. 
       if(objShape === "circArc"){
         checkCollision = collideCircleCircle(x, y, 2*radius, obj[0], obj[1], obj[2]);
-        let checkCollision2 = collideCircleCircle(x, y, 2*radius, obj[3], obj[4], obj[5]);
         if(checkCollision){
-          userCircArcCollision(typeOfMovement, obj, checkCollision2);
+          userCircArcCollision(typeOfMovement, obj);
           break;
         }
       }
@@ -826,7 +832,7 @@ function userMapCollision(typeOfMovement, key1, key2){
   }else if(typeOfMovement === "dash"){
     // Keeps looping until the user is within the boundaries.
     while(!checkCollision){
-      if(phase === 2){ // phase 2 does not require this check.
+      if(phase === 3){ // phase 3 does not require this check.
         return 0;
       }
 
@@ -837,9 +843,8 @@ function userMapCollision(typeOfMovement, key1, key2){
         
         if(objShape === "circArc"){
           checkCollision = collideCircleCircle(x, y, 2*radius, obj[0], obj[1], obj[2]);
-          let checkCollision2 = collideCircleCircle(x, y, 2*radius, obj[3], obj[4], obj[5]);
           if(checkCollision){
-            if(!userCircArcCollision(typeOfMovement, obj, checkCollision2))
+            if(!userCircArcCollision(typeOfMovement, obj))
               checkCollision = false;
           }
         }
@@ -889,7 +894,7 @@ function userCircCollision(typeOfMovement, obj){
   return true;
 }
 
-function userCircArcCollision(typeOfMovement, obj, inVoid){
+function userCircArcCollision(typeOfMovement, obj){
 
   let dotPos = radius + 1;
   let x2 = x;
@@ -980,11 +985,14 @@ function spawnBullet(){
       if(phase === 1){
         bullets[bullets.length-1].bulletDmg = 2;
       }
-      if(phase === 2){
+      if(phase === 3){
         bullets[bullets.length-1].bulletDmg = 6;
       }
-      if(phase === 3 && intervalCount >= 16){
+      if(phase === 2 && intervalCount >= 16){
         bullets[bullets.length-1].bulletDmg = 10;
+      }
+      if(isEasyMode){
+        bullets[bullets.length-1].bulletDmg *= 2;
       }
     }
     
@@ -1023,12 +1031,16 @@ function moveBullet(bulletArray, collisionKey, bulletKey){
       if(phase === 1){
         bulletArray[i].bulletDmg = 20;
       }
-      if(phase === 2){
+      if(phase === 3){
         bulletArray[i].bulletDmg = 30;
       }
-      if(phase === 3 && intervalCount >= 16){
+      if(phase === 2 && intervalCount >= 16){
         bulletArray[i].bulletDmg = 50;
       }
+      if(isEasyMode){
+        bulletArray[i].bulletDmg *= 2;
+      }
+      
     }else{
       bulletArray[i].display();
     }
@@ -1156,16 +1168,40 @@ function bossAction(){
   
   let randNum = random(1, 10000);
   let decrement = 250;
+  let timeVal = 1000;
+
+  if(isEasyMode){
+    decrement = 350;
+    timeVal = 2000;
+  }
 
   // Phase one: purely shoots bullets at the player at random. 
   // Phase two: spawn waves in a timely fashion at a random position,
   //            eventually becomes like phase 1.
   if(phase === 1){
-    if(randNum >= 9000){
-      boss.shot();
+    if(isEasyMode){
+      if(randNum >= 9400){
+        boss.shot();
+      }
+    }else{
+      if(randNum >= 9000){
+        boss.shot();
+      }
+    }
+    if(arcZoneTimer + arcZoneTimerCheck < millis()){
+      arcZoneTimer = millis();
+      boss.arcZone(x, y);
     }
   }else if(phase === 2){
-    if(waveTimer >= 1000){
+    if(random(100) <= 50){
+      fill("purple");
+    }else{
+      fill("blueviolet");
+    }
+    ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
+    phaseThree();
+  }else if(phase === 3){
+    if(waveTimer >= timeVal){
       if(lastWave + waveTimer < millis()){
         boss.circularWave();
         lastWave = millis();
@@ -1175,22 +1211,16 @@ function bossAction(){
       boss.invincibilityMode = false;
       boss.xPos = width / 2;
       boss.yPos = height / 2;
-      if(randNum >= 9000){
-        boss.shot();
+      if(isEasyMode){
+        if(randNum >= 9400){
+          boss.shot();
+        }
+      }else{
+        if(randNum >= 9000){
+          boss.shot();
+        }
       }
     }
-  }else if(phase === 3){
-    if(random(100) <= 50){
-      fill("purple");
-    }else{
-      fill("blueviolet");
-    }
-    ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
-    if(random(10000) >= 9900){
-      // boss.arcZone(x, y);
-      // boss.arcWave();
-    }
-    phaseThree();
   }
   
   spawnBoss();
@@ -1311,7 +1341,7 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
   let x2 = x;
   let y2 = y;
 
-  if(phase === 3){
+  if(phase === 2){
     for(let i=0; i<360; i++){
       x2 = x + cos(i)*dotPos;
       y2 = y + sin(i)*dotPos;
@@ -1555,16 +1585,26 @@ function bossHealthBar(){
   if(bossHealth < 0){
     bossHealth = 0;
   }
-  if(bossHealth <= 0 && phase == 1){
+  if(bossHealth <= 0 && phase === 1){
     if(numOfRevives < 3){
       numOfRevives++;
     }
-    lastWave = millis();
-    phase = 3;
+    phase = 2;
     resetPhase();
     bossHealth = BOSHEALTH;
+    userHealth = PLYRHEALTH;
   }
-  if(bossHealth < 0 && phase == 2){
+  if(bossHealth <= 0 && phase === 2){
+    if(numOfRevives < 3){
+      numOfRevives++;
+    }
+    phase = 3;
+    resetPhase();
+    lastWave = millis();
+    bossHealth = BOSHEALTH;
+    userHealth = PLYRHEALTH;
+  }
+  if(bossHealth <= 0 && phase === 3){
     resetPhase();
     phase = -2;
   }
@@ -1616,20 +1656,26 @@ function spawnMap(){
   if(phase === 1 && phaseBool[phase-1] === 0){
     phaseBool[phase-1] = 1;
     map = new Maps("circArc");
-    map.arr.push(width/2, height/2, 600, width/2, height/2, 400);
+
+    if(isEasyMode){
+      map.arr.push(width/2, height/2, 600, width/2, height/2, 300);
+    }else{
+      map.arr.push(width/2, height/2, 600, width/2, height/2, 400);
+    }
+
     storeMaps.push(map);
     y = height/2 + 300;
     boss.xPos = width/2;
     boss.yPos = height/2;
   }
-  if(phase === 3 && phaseBool[phase-1] === 0){
+  if(phase === 2 && phaseBool[phase-1] === 0){
     storeMaps.splice(0, storeMaps.length);
     phaseBool[phase-1] = 1;
     map = new Maps("circ");
     map.arr.push(width/2, height/2, 700);
     storeMaps.push(map);
   }
-  if(phase === 2 && phaseBool[phase-1] === 0){
+  if(phase === 3 && phaseBool[phase-1] === 0){
     storeMaps.splice(0, storeMaps.length);
     phaseBool[phase-1] = 1;
     map = new Maps("grid");
@@ -1732,16 +1778,17 @@ function updateGrid(tileWidth, tileHeight, tileSize){
 
 // Resets all functionality of the current phase.
 function resetPhase(){
-  if(phase == 1){
+  if(phase === 1){
     userHealth = PLYRHEALTH;
     bossHealth = BOSHEALTH;
     boss.xPos = width / 2;
     boss.yPos = height / 2;
     boss.arr.splice(0, boss.arr.length);
     x = width / 2;
-    y = height / 2 + 300;
+    y = height / 2 + 270;
+    arcZoneTimer = millis();
   }
-  if(phase == 2){
+  if(phase === 3){
     // Resets the grid layout
     for(let i=0; i < grid.length; i++){
       for(let v=0; v < grid[i].length; v++){
@@ -1765,7 +1812,7 @@ function resetPhase(){
     textBool = true;
     textTimer = millis();
   }
-  if(phase === 3){
+  if(phase === 2){
     boss.xPos = width / 2;
     boss.yPos = height / 2 - 280;
     x = width / 2;
