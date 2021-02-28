@@ -3,47 +3,27 @@
 // January 3rd, 2021
 //
 // CS 30 FINAL TO DO:
-// 
-// - Controls Help Screen
-// - a border around the screen to symbolize your screen needs
-//   to see the boundaries if you want to play the game properly
-// - Easy Mode and normal mode: Arguo(easy) and Captivum(normal) Mode
-// - Perhaps each phase is a different boss. And you're just going down
-//   each level of like a tower. Or it's just the same boss again
-//   and again, just like beating his clones or something.
-//
-// Phases:
-// Pre-1: A walk towards upward out of your prison gate to the
-//        battle grounds.
-// Transition: Text of "You Cannot Escape."
-// 1 - a circle the user stands on, the player simply walks
-//     around the boss and shoots at them 
-// 2 - the map gets bigger with a larger circle and smaller circles
-//     around the screen for the player to jump to.
-// 3 - 
-// 4 - bullet hell phase, the boss stays at the top of the screen,
-//     and unleashes waves and waves of bullets and waves. Like furi
-//     boss one final phase. The map is probably just a really large
-//     circle that takes up most of the screen.
-// 5 - the wave hell from the grid project
-//
-// Post Phases:
-// probably create more transitional phases like the player walking
-// up to the boss. The boss says their monologue. 
-// Really make sure the tower aesthetic is there.
+// - More sound effects. For arc zone specifically. Perhaps clicking on the button
+// and key clicks
+// - Boss phase bars
+// - Comments, formatting, and readability
 
 // Phase Variables
-let phase = 2;
-let phaseBool = [0, 0, 0];
+let phase = 0;
+let phaseBool = [0, 0, 0, 0];
 let arcZoneTimer = 0, arcZoneTimerCheck = 3000;
 let bulletHellTimer = 500;
 let bulletHellTimerCheck = 330;
 let alternate = true;
 let invinceBulletsTimer = 0, invinceBulletsAlternate = true;
 let intervalCount = 0;
+let practicePhaseAtk = 0;
+let practicePhaseInterval = 0, practicePhaseIntervalCheck = 15000;
+let pauseTime = 0, pauseTimeCheck = 1500;
 let isEasyMode = false;
 let captivusColour = "blue";
 let captivumColour = "red";
+let practiceColour = "purple";
 
 // Player variables
 let x, y;
@@ -104,10 +84,11 @@ let aniTime;
 let aniInterval = 1000;
 let aniBool = true;
 let aniColour;
-let theText = "Press Any Key";
+let theText;
 let textBool = false;
 let textTimer = 0, textTimerCheck = 1000;
 let myFont;
+let zoneDiameter = 10;
 
 // Music, Dialogue, and Sounds
 let makeThisRightSong;
@@ -192,12 +173,14 @@ class Boss{
   circularWave(){
 
     // The boss is teleported to a random position within the grid.
-    let xStartRange = startPosOfGridWidth + this.radius;
-    let xEndRange = endPosOfGridWidth - this.radius;
-    let yStartRange = startPosOfGridHeight + this.radius;
-    let yEndRange = endPosOfGridHeight - this.radius;
-    this.xPos = random(xStartRange, xEndRange);
-    this.yPos = random(yStartRange, yEndRange);
+    if(phase != 4){
+      let xStartRange = startPosOfGridWidth + this.radius;
+      let xEndRange = endPosOfGridWidth - this.radius;
+      let yStartRange = startPosOfGridHeight + this.radius;
+      let yEndRange = endPosOfGridHeight - this.radius;
+      this.xPos = random(xStartRange, xEndRange);
+      this.yPos = random(yStartRange, yEndRange);
+    }
 
     this.circWaveArr.push(new Wave("circWave"));
     waveSound.play();
@@ -206,6 +189,7 @@ class Boss{
   arcZone(xPos2, yPos2){
     this.arcZoneArr.push(new Wave("arcZone", xPos2, yPos2));
     this.arcZoneArr[this.arcZoneArr.length - 1].determineAngle();
+    waveSound.play();
   }
 
   arcWave(xPos2, yPos2){
@@ -213,14 +197,14 @@ class Boss{
     this.arcWaveArr[this.arcWaveArr.length - 1].determineAngle();
     this.arcWaveArr[this.arcWaveArr.length - 1].arcAngle = 50;
     this.arcWaveArr[this.arcWaveArr.length - 1].radius = 250;
-    this.arcWaveArr[this.arcWaveArr.length - 1].yPos -= 90;
-  }
-}
 
-class BulletHell{
-  constructor(time){
-    this.timer = time;
-    this.interval = 500;
+    if(this.arcWaveArr[this.arcWaveArr.length - 1].yPos < y){
+      this.arcWaveArr[this.arcWaveArr.length - 1].dy *= -1;
+    }
+    if(phase != 4){
+      this.arcWaveArr[this.arcWaveArr.length - 1].yPos -= 90;
+    }
+    waveSound.play();
   }
 }
 
@@ -298,7 +282,7 @@ class Wave{
   move(){
     if(this.waveType === "arcWave"){
       this.xPos -= this.dx;
-      this.yPos += this.dy;
+      this.yPos -= this.dy;
     }else{
       this.radius += this.speed;
     }
@@ -429,12 +413,28 @@ function phases(){
     if(phase === -4){
       captivusColour = "white";
       captivumColour = "white";
+      practiceColour = "white";
       if(mouseX < width / 2 - 50){
         captivusColour = "blue";
-      }
-      if(mouseX > width / 2 + 50){
+      }else if(mouseX > width / 2 + 50){
         captivumColour = "red";
+      }else{
+        practiceColour = "purple";
       }
+    }
+  }
+
+  if(phase === 2 && aniTime + aniInterval > millis()){
+    background(0);
+
+    inAnimation = true;
+    animation();
+  }else if(phase === 2 && aniTime + aniInterval <= millis()){
+    inAnimation = false;
+
+    if(aniBool){
+      textTimer = millis();
+      aniBool = false;
     }
   }
 
@@ -453,9 +453,7 @@ function phases(){
       removeTileTimer = aniInterval*10 + textTimerCheck;
     }
 
-    inAnimation = true; // @ Debugged: Normal is true and line after does not exist
-    // aniInterval = 0;
-
+    inAnimation = true;
     animation();
 
     // Sets up the game for post the animation.
@@ -497,15 +495,19 @@ function phases(){
 // This function will start the game if any key is pressed.
 function keyPressed(){
   if(phase === 0){
-    dangerSong.stop();
-    makeThisRightSong.loop();
+    phase = -5;
+  }else if(phase === -5){
     phase = -4;
-    x = width/2;
-    y = height/2;
   }
 }
 
 function mousePressed(){
+  if(phase === -4 && (mouseX >= width / 2 - 50) && (mouseX <= width / 2 + 50)){
+    dangerSong.stop();
+    makeThisRightSong.loop();
+    phase = 4;
+    resetPhase();
+  }
   if(phase === -4 && ((mouseX < width / 2 - 50) || (mouseX > width / 2 + 50))){
     if(mouseX < width / 2 - 50){
       isEasyMode = true;
@@ -514,7 +516,13 @@ function mousePressed(){
       arcZoneTimerCheck = 5000;
       bulletHellTimerCheck = 700;
     }
+    pauseTime = millis();
+    x = width/2;
+    y = height/2;
     phase = 1;
+    textTimer = millis();
+    dangerSong.stop();
+    makeThisRightSong.loop();
   }
 }
 
@@ -542,16 +550,31 @@ function playDialogue(){
 
 // Displays any text that should be on screen at a given time.
 function displayText(){
+
+  if(phase === 2 && phaseBool[1] === 0){
+    return 0;
+  }
+  if(phase === 3 && phaseBool[2] === 0){
+    return 0;
+  }
+
   let size;
   textFont(myFont);
   textAlign(CENTER, CENTER);
 
   // Phases 0, -1, -2 are for the title screen, you lost screen, and you won screen.
   if(phase === 0){
-    size = height / 10; 
-    fill("white");
+    theText = "Incarceratus";
+    size = height / 8; 
+    fill("red");
     textSize(size);
     text(theText, width/2, height/2);
+
+    theText = "Press Any Key";
+    size = height / 25; 
+    fill("white");
+    textSize(size)
+    text(theText, width/2, height/2 + 70);
   }
   if(phase === -1){
     theText = "You lost this time.";
@@ -573,26 +596,83 @@ function displayText(){
     fill(captivusColour);
     textAlign(CENTER, LEFT);
     textSize(size)
-    text(theText, 500, height/2);
+    text(theText, 400, height/2);
     
     theText = "(Easy Mode)";
     size = height / 25; 
     textSize(size)
-    text(theText, 500, height/2 + 30);
+    text(theText, 400, height/2 + 30);
+
+    theText = "praxi";
+    size = height / 30; 
+    fill(practiceColour);
+    textSize(size)
+    text(theText, width/2, height/2);
 
     theText = "Captivum";
     size = height / 10; 
     fill(captivumColour);
     textAlign(CENTER, LEFT);
     textSize(size)
-    text(theText, width-500, height/2);
+    text(theText, width-400, height/2);
     
     theText = "(Normal Mode)";
     size = height / 25; 
     textSize(size)
-    text(theText, width-500, height/2 + 30);
+    text(theText, width-400, height/2 + 30);
+  }
+  if(phase === -5){
+    theText = "Controls";
+    size = height / 10; 
+    fill("red");
+    textAlign(CENTER, TOP);
+    textSize(size)
+    text(theText, width/2, height/2 - 130);
+    
+    theText = "WASD: MOVE";
+    size = height / 25; 
+    fill("yellow");
+    textSize(size)
+    text(theText, width/2, height/2 - 50);
+
+    theText = "Spacebar: DASH";
+    size = height / 25; 
+    textSize(size)
+    text(theText, width/2, height/2);
+
+    theText = "Left Click: SHOT";
+    size = height / 25; 
+    textSize(size)
+    text(theText, width/2, height/2 + 50);
+
+    theText = "Right Click: CHARGED SHOT";
+    size = height / 25; 
+    textSize(size)
+    text(theText, width/2, height/2 + 100);
+
+    theText = "Press any key";
+    size = height / 35; 
+    fill("white");
+    textSize(size)
+    text(theText, width/2, height/2 + 150);
   }
   
+  if(phase === 1 && textTimer + textTimerCheck > millis()){
+    theText = "Fight";
+    size = height / 2;
+    fill("white");
+    textSize(size);
+    text(theText, width/2, height/2);
+  }
+
+  if(phase === 2 && textTimer + textTimerCheck > millis()){
+    theText = "Live";
+    size = height / 2;
+    fill("white");
+    textSize(size);
+    text(theText, width/2, height/2);
+  }
+
   // Spawns the text for phase 3.
   if(phase === 3 && !inAnimation){
     if(textBool && textTimer + textTimerCheck > millis()){
@@ -612,9 +692,23 @@ function animation(){
   let diameter;
   let decrement = 10;
 
+  if(phase === 2){
+    background("red");
+    diameter = height - decrement;
+    if(random(100) <= 50){
+      fill("purple");
+    }else{
+      fill("blueviolet");
+    }
+    circle(width/2, height/2, zoneDiameter);
+    fill(boss.ogColour);
+    circle(width/2, height/2, diameter);
+    zoneDiameter += 20;
+  }
+
   // Executes the phase 3 animation.
   if(phase === 3){
-    background("brown");
+    background("brown"); 
     diameter = height - decrement;
 
     // This is for the flashing animation for the boss' invincibility mode.
@@ -1028,6 +1122,8 @@ function moveBullet(bulletArray, collisionKey, bulletKey){
       bulletArray[i].preciseDisplay();
       bulletArray[i].bulletDmg = 10;
 
+      // adjusts the amount of damage the charge shot
+      // does depending on the phase.
       if(phase === 1){
         bulletArray[i].bulletDmg = 20;
       }
@@ -1174,6 +1270,18 @@ function bossAction(){
     decrement = 350;
     timeVal = 2000;
   }
+  if(pauseTime + pauseTimeCheck > millis()){
+    if(phase === 2){
+      if(random(100) <= 50){
+        fill("purple");
+      }else{
+        fill("blueviolet");
+      }
+      ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
+    }
+    spawnBoss();
+    return 0;
+  }
 
   // Phase one: purely shoots bullets at the player at random. 
   // Phase two: spawn waves in a timely fashion at a random position,
@@ -1199,7 +1307,7 @@ function bossAction(){
       fill("blueviolet");
     }
     ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
-    phaseThree();
+    phaseTwo();
   }else if(phase === 3){
     if(waveTimer >= timeVal){
       if(lastWave + waveTimer < millis()){
@@ -1221,12 +1329,14 @@ function bossAction(){
         }
       }
     }
+  }else if(phase === 4){
+    phaseFour();
   }
   
   spawnBoss();
 }
 
-function phaseThree(){
+function phaseTwo(){
 
   let thisRadius = -100;
   let velo = 2;
@@ -1311,6 +1421,38 @@ function phaseThree(){
       invinceBulletsTimer = 0;
       invinceBulletsAlternate = !invinceBulletsAlternate;
       intervalCount++;
+    }
+  }
+}
+
+function phaseFour(){
+
+  let randNum = random(1, 10000);
+
+  if(practicePhaseInterval + practicePhaseIntervalCheck <= millis()){
+    practicePhaseInterval = millis();
+    practicePhaseAtk = (practicePhaseAtk+1)%4;
+  }
+
+  if(practicePhaseAtk === 0){
+    if(randNum >= 9400){
+      boss.shot();
+    }
+  }else if(practicePhaseAtk === 1){
+    if(arcZoneTimer + arcZoneTimerCheck < millis()){
+      arcZoneTimer = millis();
+      boss.arcZone(x, y);
+    }
+  }else if(practicePhaseAtk === 2){
+    if(arcZoneTimer + arcZoneTimerCheck < millis()){
+      arcZoneTimer = millis();
+      boss.arcWave(x, y);
+    }
+  }
+  else if(practicePhaseAtk === 3){
+    if(lastWave + waveTimer < millis()){
+      boss.circularWave();
+      lastWave = millis();
     }
   }
 }
@@ -1543,9 +1685,14 @@ function userHealthBar(){
   let endPosOfRevivePoints = numOfRevives*2*barWidth + 1.1*padding;
 
   // When the user's health reaches 0, use up one revive if possible.
-  if(userHealth <= 0 && numOfRevives >= 1){
+  if(userHealth <= 0 && numOfRevives >= 1 && phase != 4){
     numOfRevives--;
     resetPhase();
+    userHealth = PLYRHEALTH;
+  }
+
+  // The player is immortal during phase 4, aka the practice phase.
+  if(userHealth <= 0 && phase === 4){
     userHealth = PLYRHEALTH;
   }
 
@@ -1590,6 +1737,12 @@ function bossHealthBar(){
       numOfRevives++;
     }
     phase = 2;
+    aniInterval = 3000;
+    aniTime = millis();
+    pauseTime = millis();
+    pauseTimeCheck += aniInterval;
+    textTimer = millis();
+    aniBool = true;
     resetPhase();
     bossHealth = BOSHEALTH;
     userHealth = PLYRHEALTH;
@@ -1598,6 +1751,7 @@ function bossHealthBar(){
     if(numOfRevives < 3){
       numOfRevives++;
     }
+    aniBool = true;
     phase = 3;
     resetPhase();
     lastWave = millis();
@@ -1607,6 +1761,9 @@ function bossHealthBar(){
   if(bossHealth <= 0 && phase === 3){
     resetPhase();
     phase = -2;
+  }
+  if(bossHealth <= 0 && phase === 4){
+    bossHealth = BOSHEALTH;
   }
 
   let endPosOfHealthBar = width - 10;
@@ -1689,6 +1846,13 @@ function spawnMap(){
         grid[i].push(1);
       }
     }
+  }
+  if(phase === 4 && phaseBool[phase-1] === 0){
+    storeMaps.splice(0, storeMaps.length);
+    phaseBool[phase-1] = 1;
+    map = new Maps("circ");
+    map.arr.push(width/2, height/2, 700);
+    storeMaps.push(map);
   }
 
   // Iterates through all the map objects and spawns them in.
@@ -1787,6 +1951,22 @@ function resetPhase(){
     x = width / 2;
     y = height / 2 + 270;
     arcZoneTimer = millis();
+    pauseTime = millis();
+    textTimer = millis();
+  }
+  if(phase === 2){
+    boss.xPos = width / 2;
+    boss.yPos = height / 2 - 280;
+    x = width / 2;
+    y = height / 2;
+    bulletHellTimer = millis();
+    bulletHellTimerCheck = 330;
+    alternate = true;
+    invinceBulletsTimer = 0;
+    invinceBulletsAlternate = true;
+    intervalCount = 0;
+    pauseTime = millis();
+    textTimer = millis();
   }
   if(phase === 3){
     // Resets the grid layout
@@ -1812,17 +1992,12 @@ function resetPhase(){
     textBool = true;
     textTimer = millis();
   }
-  if(phase === 2){
+  if(phase === 4){
     boss.xPos = width / 2;
-    boss.yPos = height / 2 - 280;
+    boss.yPos = height / 2;
     x = width / 2;
-    y = height / 2;
-    bulletHellTimer = millis();
-    bulletHellTimerCheck = 330;
-    alternate = true;
-    invinceBulletsTimer = 0;
-    invinceBulletsAlternate = true;
-    intervalCount = 0;
+    y = height / 2 + 150;
+    practicePhaseInterval = millis();
   }
   boss.circWaveArr.splice(0, boss.circWaveArr.length);
   boss.arr.splice(0, boss.arr.length);
