@@ -1,12 +1,37 @@
-// CS 30 Major Project
+// CS 30 Major Project (Incarceratus)
 // Swarup Ukil
 // January 3rd, 2021
 //
-// CS 30 FINAL TO DO:
-// - More sound effects. For arc zone specifically. Perhaps clicking on the button
-// and key clicks
-// - Boss phase bars
-// - Comments, formatting, and readability
+// Major Project:
+//   This is my final project; a 2D shooter inspired by Furi. I have
+//   completed all the "Need to Have" compenents: 3 phases, 3 different maps,
+//   boss has 4 unique attacks, collision detection/in-general-detection for 
+//   deleting objects, a practice room, and easy and hard mode. The rest 
+//   that exists for the game to be functional is a shooting mechanic, dashing,
+//   being able to damage both the user and boss, and a border detection.
+//
+// Controls:
+//   WASD - basic movement
+//   Spacebar - this in conjuction with the WASD keys will dash the player
+//              in that direction
+//   Left Click - shoots a bullet
+//   Right Click - holding it down will allow a precision shot, it will occur
+//                 after releasing the right click when the line turns yellow
+// 
+// Extra for Experts:
+//    These are a few things I believe added quality and complexity to my project. 
+//
+//   -I have added more sound effects (e.g. GUI sounds, arc zone sounds)
+//   -There is a border detection to keep the player from WALKING and 
+//    DASHING out of the map boundaries.
+//   -The collision detection for the arc zone and arc wave are creative
+//   -The deletion method for attacks and objects
+//   -The bullet hell phase functionality and layout
+//   -There is a "title", "you lost", "you win", "control", and "difficulty" screen.
+//   -The cleanliness of the design and aesthetic
+//   -The animation in-between phases
+//   -The dialogue and texts
+//   -The revive system
 
 // Phase Variables
 let phase = 0;
@@ -107,6 +132,9 @@ let waveSound;
 let dashSound;
 let hitSound;
 let tileSound, tileSoundTrue = true, tileSoundPlaying = false;
+let beepSound;
+let zoneSound;
+
 
 
 // The maps class is used to store the map layout of every phase of the boss.
@@ -125,9 +153,9 @@ class Boss{
     this.ogColour = this.colour;
     this.invinceColour = "gold";
     this.arr = []; // stores the boss' bullets
-    this.circWaveArr = []; // stores the boss' waves
-    this.arcZoneArr = [];
-    this.arcWaveArr = [];
+    this.circWaveArr = []; // stores the boss' circular waves
+    this.arcZoneArr = []; // stores the boss' arc zones
+    this.arcWaveArr = []; // stores the boss' arc waves
     this.radius = 2.1 * radius;
     this.invincibilityMode = false;
     this.ellipseWidth = 250;
@@ -147,7 +175,7 @@ class Boss{
   }
   
   // This function randomly decides how the boss will defend itself.
-  defenceState(isBullet){
+  defenceState(){
     let randNum = random(1, 10);
     
     // Determines whether the boss will block the attack or not.
@@ -160,7 +188,9 @@ class Boss{
   
   // This function creates a new bullet for the boss.
   shot(){
-    bossBulletSound.play();
+    if(phase !== 2){
+      bossBulletSound.play();
+    }
     bulletDirection(this.xPos, this.yPos);
     bulletMovesUp = !bulletMovesUp;
     this.arr.push(new Bullet(2 * bRadius));
@@ -186,12 +216,14 @@ class Boss{
     waveSound.play();
   }
 
+  // Spawns a arc zone attack from the boss' position
   arcZone(xPos2, yPos2){
     this.arcZoneArr.push(new Wave("arcZone", xPos2, yPos2));
     this.arcZoneArr[this.arcZoneArr.length - 1].determineAngle();
-    waveSound.play();
+    zoneSound.play();
   }
 
+  // Spawns a arc wave attack from the boss' position
   arcWave(xPos2, yPos2){
     this.arcWaveArr.push(new Wave("arcWave", xPos2, yPos2));
     this.arcWaveArr[this.arcWaveArr.length - 1].determineAngle();
@@ -239,7 +271,7 @@ class Wave{
       this.displayArcWave();
     }
   }
-  displayCircWave(){
+  displayCircWave(){ // displays the circ. wave
     fill(0, 0);
     stroke(50, 255, 255, 150);
     strokeWeight(7);
@@ -248,12 +280,8 @@ class Wave{
     strokeWeight(1);
     noStroke();
   }
-  displayArcZone(){
-    if(random(100) >= 0){
-      fill("purple");
-    }else{
-      fill("blueviolet");
-    }
+  displayArcZone(){ // displays the arc zone
+    fill("purple");
     noStroke();
     angleMode(DEGREES);
     translate(this.xPos, this.yPos);
@@ -265,7 +293,7 @@ class Wave{
     rotate(-this.startAngle);
     translate(-this.xPos, -this.yPos);
   }
-  displayArcWave(){
+  displayArcWave(){ // displays the arc wave
     fill(0, 0);
     stroke(50, 255, 255, 150);
     strokeWeight(30);
@@ -287,6 +315,9 @@ class Wave{
       this.radius += this.speed;
     }
   }
+
+  // Determines the angle for the boss' arc attacks,
+  // it also determines the dx and dy for the attacks.
   determineAngle(){
     angleMode(RADIANS);
     let sideA = this.xPos - this.xPos2;
@@ -295,6 +326,7 @@ class Wave{
     this.theAngle = acos(sideA / hypo);
     this.dx = this.velocity * cos(this.theAngle);
     this.dy = this.velocity * sin(this.theAngle);
+
     if (this.sideB > 0) {
       this.startAngle = 180 + this.theAngle/PI * 180;
     }else{
@@ -355,6 +387,8 @@ function preload(){
   dashSound = loadSound("assets/Sounds/Wave Sound Effect.mp3");
   hitSound = loadSound("assets/Sounds/Hit Sound Effect.mp3");
   tileSound = loadSound("assets/Sounds/Tile Walk Sound Effect.mp3");
+  beepSound = loadSound("assets/Sounds/Beep Sound Effect.mp3");
+  zoneSound = loadSound("assets/Sounds/Zone Sound Effect.mp3");
   myFont = loadFont("assets/SparkleFilled.ttf");
 
   dialogue = loadSound("assets/Dialogue/Time to wake up.ogg");
@@ -376,11 +410,14 @@ function preload(){
   // adjust volume
   tileSound.setVolume(3.0);
   tileSound.rate(1.75);
-  hitSound.setVolume(2.5); // not a very good sound, should be replaced in the future
+  hitSound.setVolume(2.5);
   bulletSound.setVolume(0.7);
   dashSound.setVolume(0.7);
   dashSound.rate(1.5);
   bossBulletSound.setVolume(0.5);
+  beepSound.setVolume(10.0);
+  zoneSound.setVolume(0.7);
+  zoneSound.rate(3);
 }
 
 // Create canvas, set up a few variables, and play the song.
@@ -410,10 +447,13 @@ function phases(){
     displayText();
     playDialogue();
 
+    // Phase 4, aka choose the difficulty screen, the text colours 
+    // change baseed on the mouse's position.
     if(phase === -4){
       captivusColour = "white";
       captivumColour = "white";
       practiceColour = "white";
+
       if(mouseX < width / 2 - 50){
         captivusColour = "blue";
       }else if(mouseX > width / 2 + 50){
@@ -424,14 +464,14 @@ function phases(){
     }
   }
 
+  // This runs the phase 2 animation. The else sets up the 
+  // game for the gameplay portion of phase 2.
   if(phase === 2 && aniTime + aniInterval > millis()){
     background(0);
-
     inAnimation = true;
     animation();
   }else if(phase === 2 && aniTime + aniInterval <= millis()){
     inAnimation = false;
-
     if(aniBool){
       textTimer = millis();
       aniBool = false;
@@ -492,22 +532,30 @@ function phases(){
   }
 }
 
-// This function will start the game if any key is pressed.
+// This function will go from the "title" screen to the "controls" 
+// screen and or "controls" screen to the "choose difficulty" screen.
 function keyPressed(){
   if(phase === 0){
+    beepSound.play();
     phase = -5;
   }else if(phase === -5){
+    beepSound.play();
     phase = -4;
   }
 }
 
+// This function determines the difficulty of the game based
+// the mouse's position on screen.
 function mousePressed(){
+
   if(phase === -4 && (mouseX >= width / 2 - 50) && (mouseX <= width / 2 + 50)){
     dangerSong.stop();
+    beepSound.play();
     makeThisRightSong.loop();
     phase = 4;
     resetPhase();
   }
+
   if(phase === -4 && ((mouseX < width / 2 - 50) || (mouseX > width / 2 + 50))){
     if(mouseX < width / 2 - 50){
       isEasyMode = true;
@@ -516,12 +564,15 @@ function mousePressed(){
       arcZoneTimerCheck = 5000;
       bulletHellTimerCheck = 700;
     }
+
+    // Setting up variables for the gameplay portion of phase 1.
     pauseTime = millis();
     x = width/2;
     y = height/2;
     phase = 1;
     textTimer = millis();
     dangerSong.stop();
+    beepSound.play();
     makeThisRightSong.loop();
   }
 }
@@ -551,6 +602,7 @@ function playDialogue(){
 // Displays any text that should be on screen at a given time.
 function displayText(){
 
+  // This is to make sure text do not pop up during an animation.
   if(phase === 2 && phaseBool[1] === 0){
     return 0;
   }
@@ -562,7 +614,8 @@ function displayText(){
   textFont(myFont);
   textAlign(CENTER, CENTER);
 
-  // Phases 0, -1, -2 are for the title screen, you lost screen, and you won screen.
+  // Phases 0, -1, -2, -4, -5 are for the title screen, 
+  // you lost screen, you won screen, difficulty screen, and controls.
   if(phase === 0){
     theText = "Incarceratus";
     size = height / 8; 
@@ -584,7 +637,7 @@ function displayText(){
     text(theText, width/2, height/2);
   }
   if(phase === -2){
-    theText = "Congratulations, you have beaten the jailer.";
+    theText = "Congratulations, the jailer is dead.";
     size = height / 15;
     fill("yellow"); 
     textSize(size);
@@ -657,6 +710,7 @@ function displayText(){
     text(theText, width/2, height/2 + 150);
   }
   
+  // Spawns the text for phase 1.
   if(phase === 1 && textTimer + textTimerCheck > millis()){
     theText = "Fight";
     size = height / 2;
@@ -665,6 +719,7 @@ function displayText(){
     text(theText, width/2, height/2);
   }
 
+  // Spawns the text for phase 2.
   if(phase === 2 && textTimer + textTimerCheck > millis()){
     theText = "Live";
     size = height / 2;
@@ -692,6 +747,7 @@ function animation(){
   let diameter;
   let decrement = 10;
 
+  // Executes the phase 2 animation.
   if(phase === 2){
     background("red");
     diameter = height - decrement;
@@ -786,6 +842,8 @@ function ballMove(){
 // Checks and executes the dash mechanic if conditions were met.
 function keyTyped(){
   
+  // This is required so that nothing funky occurs
+  // during non-gameplay screens.
   if(phase <= 0){
     return 0;
   }
@@ -863,7 +921,6 @@ function keyTyped(){
     }
     
   }
-  
 }
 
 // If the user is out of the map boundaries, push them back, this is dependent on the phase.
@@ -875,7 +932,6 @@ function userMapCollision(typeOfMovement, key1, key2){
   let tileWidth;
   let tileHeight;
   let tileSize;
-
 
   // During this phase, the user should only be kept within the grid boundaries.
   if(phase === 3){
@@ -935,6 +991,9 @@ function userMapCollision(typeOfMovement, key1, key2){
         objShape = storeMaps[i].shape;
         obj = storeMaps[i].arr;
         
+        // Checks if the player was on this circle
+        // map but not also on the inner circle map,
+        // if true then this while loop ends.
         if(objShape === "circArc"){
           checkCollision = collideCircleCircle(x, y, 2*radius, obj[0], obj[1], obj[2]);
           if(checkCollision){
@@ -962,7 +1021,7 @@ function userMapCollision(typeOfMovement, key1, key2){
 
 }
 
-// Makes sure the player is whitin the
+// Makes sure the player is within the
 // boundaries of this circular map.
 function userCircCollision(typeOfMovement, obj){
 
@@ -988,6 +1047,8 @@ function userCircCollision(typeOfMovement, obj){
   return true;
 }
 
+// Makes sure the player is within the
+// boundaries of this circular ring map.
 function userCircArcCollision(typeOfMovement, obj){
 
   let dotPos = radius + 1;
@@ -995,7 +1056,7 @@ function userCircArcCollision(typeOfMovement, obj){
   let y2 = y;
 
   // Basically see's if every point around the user
-  // is on the map.
+  // is on the map but not the inner map.
   for(let i=0; i<360; i++){
     x2 = x + cos(i)*dotPos;
     y2 = y + sin(i)*dotPos;
@@ -1076,6 +1137,7 @@ function spawnBullet(){
       bulletDirection(mouseX, mouseY);
       bullets.push(new Bullet(2 * bRadius));
 
+      // Changes the damage of the bullets depending on the phase.
       if(phase === 1){
         bullets[bullets.length-1].bulletDmg = 2;
       }
@@ -1085,7 +1147,7 @@ function spawnBullet(){
       if(phase === 2 && intervalCount >= 16){
         bullets[bullets.length-1].bulletDmg = 10;
       }
-      if(isEasyMode){
+      if(isEasyMode && phase !== 1){
         bullets[bullets.length-1].bulletDmg *= 2;
       }
     }
@@ -1125,7 +1187,7 @@ function moveBullet(bulletArray, collisionKey, bulletKey){
       // adjusts the amount of damage the charge shot
       // does depending on the phase.
       if(phase === 1){
-        bulletArray[i].bulletDmg = 20;
+        bulletArray[i].bulletDmg = 15;
       }
       if(phase === 3){
         bulletArray[i].bulletDmg = 30;
@@ -1133,7 +1195,7 @@ function moveBullet(bulletArray, collisionKey, bulletKey){
       if(phase === 2 && intervalCount >= 16){
         bulletArray[i].bulletDmg = 50;
       }
-      if(isEasyMode){
+      if(isEasyMode && phase !== 1){
         bulletArray[i].bulletDmg *= 2;
       }
       
@@ -1147,7 +1209,7 @@ function moveBullet(bulletArray, collisionKey, bulletKey){
   collisionCheck(bulletArray, collisionKey, bulletKey);
 }
 
-// Translate ever wave on screen
+// Translate every wave on screen
 function moveWave(waveArray, collisionKey, waveKey){
   
   for(let i=0; i<waveArray.length; i++){
@@ -1266,10 +1328,13 @@ function bossAction(){
   let decrement = 250;
   let timeVal = 1000;
 
+  // Makes the boss easier if the difficulty is set to easy.
   if(isEasyMode){
     decrement = 350;
     timeVal = 2000;
   }
+
+  // Adds a delay for attacks at the start of a phase.
   if(pauseTime + pauseTimeCheck > millis()){
     if(phase === 2){
       if(random(100) <= 50){
@@ -1283,10 +1348,14 @@ function bossAction(){
     return 0;
   }
 
-  // Phase one: purely shoots bullets at the player at random. 
-  // Phase two: spawn waves in a timely fashion at a random position,
-  //            eventually becomes like phase 1.
+  // Phase one: purely shoots bullets at the player at random.
+  //            and spawns arc zones on a interval. 
+  // Phase two: a bullet hell.
+  // Phase three: spawn waves in a timely fashion at a random position,
+  //              eventually becomes like phase 1 without the arc zones.
+  // Phase four: is a practice phase for the player.
   if(phase === 1){
+
     if(isEasyMode){
       if(randNum >= 9400){
         boss.shot();
@@ -1300,7 +1369,9 @@ function bossAction(){
       arcZoneTimer = millis();
       boss.arcZone(x, y);
     }
+
   }else if(phase === 2){
+
     if(random(100) <= 50){
       fill("purple");
     }else{
@@ -1308,7 +1379,9 @@ function bossAction(){
     }
     ellipse(boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
     phaseTwo();
+
   }else if(phase === 3){
+
     if(waveTimer >= timeVal){
       if(lastWave + waveTimer < millis()){
         boss.circularWave();
@@ -1329,6 +1402,7 @@ function bossAction(){
         }
       }
     }
+
   }else if(phase === 4){
     phaseFour();
   }
@@ -1336,6 +1410,7 @@ function bossAction(){
   spawnBoss();
 }
 
+// Spawns a bullet hell.
 function phaseTwo(){
 
   let thisRadius = -100;
@@ -1351,6 +1426,8 @@ function phaseTwo(){
   let add = 10;
   let invinceBulletsTimerLimit = 7;
 
+  // The attacks spawn on interval manner and there's a set amount of
+  // times those attacks will occur.
   if(bulletHellTimer + bulletHellTimerCheck < millis() && intervalCount < 16){
 
     alternate = !alternate;
@@ -1364,6 +1441,8 @@ function phaseTwo(){
 
     bulletHellTimer = millis();
     for(let i=10 + add; i <= 170 + add; i += 10){
+
+      // Calculates the direction of the bullets and it's velocity.
       angleMode(DEGREES);
       x2 = boss.xPos - cos(i)*thisRadius;
       y2 = boss.yPos - sin(i)*thisRadius;
@@ -1375,6 +1454,8 @@ function phaseTwo(){
       xBulletSpeed = velo * cos(theta);
       yBulletSpeed = velo * sin(theta);
 
+      // This spawns in the bullet based on the predetermined
+      // map layout choosen for this phase.
       if((invinceBulletsAlternate && i > 60 && i < 120) ||
          (!invinceBulletsAlternate && i >= 120) ||
          (!invinceBulletsAlternate && i <= 60) ||
@@ -1387,6 +1468,7 @@ function phaseTwo(){
         boss.arr[boss.arr.length-1].bulletMovesUp = false;
       }
 
+      // Spawns in the arcWaves or invincible bullets depending on the interval.
       if(intervalCount <= 7){
         if(invinceBulletsTimer === 8 && !invinceBulletsAlternate && i >= 40 && i < 50){
           boss.arcWave(x3, y3);
@@ -1414,9 +1496,13 @@ function phaseTwo(){
           }
         }
       }
-
     }
 
+    bossBulletSound.play();
+    bossBulletSound.play();
+    bossBulletSound.play();
+
+    // After a certain point, the special attacks position alternates.
     if(invinceBulletsTimer > invinceBulletsTimerLimit){
       invinceBulletsTimer = 0;
       invinceBulletsAlternate = !invinceBulletsAlternate;
@@ -1425,15 +1511,19 @@ function phaseTwo(){
   }
 }
 
+// Intiates the practice phase attacks.
 function phaseFour(){
 
   let randNum = random(1, 10000);
 
+  // Every 15 seconds the boss' attack changes.
   if(practicePhaseInterval + practicePhaseIntervalCheck <= millis()){
     practicePhaseInterval = millis();
     practicePhaseAtk = (practicePhaseAtk+1)%4;
   }
 
+  // The attacks alternate between normal bullets, arc Zones,
+  // arz Waves, and circular waves.
   if(practicePhaseAtk === 0){
     if(randNum >= 9400){
       boss.shot();
@@ -1455,6 +1545,7 @@ function phaseFour(){
       lastWave = millis();
     }
   }
+
 }
 
 // Displays the boss on screen
@@ -1484,12 +1575,17 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
   let y2 = y;
 
   if(phase === 2){
+
+    // Checks every position around the user if they collided with
+    // the ellipse around the boss during phase 2.
     for(let i=0; i<360; i++){
       x2 = x + cos(i)*dotPos;
       y2 = y + sin(i)*dotPos;
       hit = collidePointEllipse(x2, y2, boss.xPos, boss.yPos, boss.ellipseWidth, boss.ellipseHeight);
       dmg = 10;
 
+      // If the user is colliding with the ellipse, check if the user
+      // is invincible; if not the user takes the predetermined damage.
       if(hit){
         if(!invincibility){
           invincibility = true;
@@ -1502,6 +1598,7 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
         break;
       }
     }
+    
     if(hit){
       userHealth -= dmg;
       if(dmgTimer + dmgTimerCheck > millis() || eraseKey === "bossBullet"){
@@ -1578,7 +1675,11 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
           y2 = y + sin(i)*dotPos;
           hit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2, obj.startAngle, obj.arcAngle*2);
 
+          // If the user is colliding with the arcZone, check if the user
+          // is invincible; if not the user takes the predetermined damage.
           if(hit){
+
+            // same concept as the arc wave invincibilty.
             if(!invincibility){
               dmg = obj.dmg;
               invincibility = true;
@@ -1598,11 +1699,17 @@ function userBossCollision(objectArray, collisionWith, eraseKey){
           hit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2 + 15, obj.startAngle, obj.arcAngle*2);
           let secondHit = collidePointArc(x2, y2, obj.xPos, obj.yPos, obj.radius/2 - 15, obj.startAngle, obj.arcAngle*2);
 
+          // This collision check can be visualized as 2 arcs, the wave and
+          // one right behind it. Basically if the user collides with the
+          // the inner arc, then that means the user is past the wave
+          // and so should not take any damage.
           if(hit && secondHit){
             hit = false;
           }
           if(hit && !secondHit){
             if(hit){
+
+              // same concept as the arc wave invincibilty.
               if(!invincibility){
                 dmg = obj.dmg;
                 invincibility = true;
@@ -1708,15 +1815,21 @@ function userHealthBar(){
   }
 
   // Spawns in the user's current # of health points.
-  for(let i=padding; i<endPosOfHealthPoints; i+=barWidth){
+  for(let i=padding; i < endPosOfHealthPoints; i += barWidth){
     stroke("black");
     fill("maroon");
     rect(i, padding, barWidth, barHeight);
     noStroke();
   }
 
+  // The user cannot die in the practice phase, so no 
+  // need to spawn in the # of revives the user has.
+  if(phase === 4){
+    return 0;
+  }
+
   // Spawns in the total # of revives the user has.
-  for(let i=1.1*padding; i<endPosOfRevivePoints; i+=2*barWidth){
+  for(let i=1.1*padding; i < endPosOfRevivePoints; i += 2*barWidth){
     stroke("black");
     fill("DarkGoldenRod");
     rect(i, padding+barHeight, 2*barWidth, barHeight);
@@ -1732,6 +1845,8 @@ function bossHealthBar(){
   if(bossHealth < 0){
     bossHealth = 0;
   }
+
+  // Sets up variables for phase 2.
   if(bossHealth <= 0 && phase === 1){
     if(numOfRevives < 3){
       numOfRevives++;
@@ -1747,6 +1862,8 @@ function bossHealthBar(){
     bossHealth = BOSHEALTH;
     userHealth = PLYRHEALTH;
   }
+
+  // Sets up variables for phase 3.
   if(bossHealth <= 0 && phase === 2){
     if(numOfRevives < 3){
       numOfRevives++;
@@ -1758,10 +1875,14 @@ function bossHealthBar(){
     bossHealth = BOSHEALTH;
     userHealth = PLYRHEALTH;
   }
+
+  // The user beat the boss.
   if(bossHealth <= 0 && phase === 3){
     resetPhase();
     phase = -2;
   }
+
+  // The boss is immortal during the practice phase.
   if(bossHealth <= 0 && phase === 4){
     bossHealth = BOSHEALTH;
   }
@@ -1770,8 +1891,11 @@ function bossHealthBar(){
   let padding = 10;
   let barWidth = 200;
   let barHeight = 20;
+  let phaseBarWidth = 20;
   let startPosOfHealthBar = endPosOfHealthBar - barWidth;
+  let startPosOfPhaseBar = endPosOfHealthBar - phaseBarWidth*6.3;
   let healthBarFillPercent = ((100-bossHealth) * 0.01) * barWidth;
+  let phasesBeaten = startPosOfPhaseBar + phaseBarWidth*2.1*phase;
 
   // Spawns in the current status of the boss' health.
   stroke("purple");
@@ -1781,6 +1905,25 @@ function bossHealthBar(){
   rect(startPosOfHealthBar, padding, healthBarFillPercent, barHeight);
   noFill();
   noStroke();
+
+  // The practice phase has 0 phases.
+  if(phase === 4){
+    return 0;
+  }
+
+  // Spawns in the bars that indicate what phase the user is in.
+  for(let i=endPosOfHealthBar; i > startPosOfPhaseBar; i -= 2.1*phaseBarWidth){
+    stroke("orange");
+
+    if(phasesBeaten > i){
+      fill("black");
+    }else{
+      fill("orange");
+    }
+
+    rect(i-2*phaseBarWidth, padding+barHeight+5, 2*phaseBarWidth, barHeight/2);
+    noStroke();
+  }
 }
 
 // Returns a empty grid of window width and height.
@@ -1966,6 +2109,7 @@ function resetPhase(){
     invinceBulletsAlternate = true;
     intervalCount = 0;
     pauseTime = millis();
+    pauseTimeCheck = 500;
     textTimer = millis();
   }
   if(phase === 3){
@@ -1999,6 +2143,7 @@ function resetPhase(){
     y = height / 2 + 150;
     practicePhaseInterval = millis();
   }
+
   boss.circWaveArr.splice(0, boss.circWaveArr.length);
   boss.arr.splice(0, boss.arr.length);
   boss.arcZoneArr.splice(0, boss.arcZoneArr.length);
@@ -2010,7 +2155,9 @@ function resetPhase(){
   dashSound.stop();
   waveSound.stop();
   bulletSound.stop();
+  zoneSound.stop();
   preciseBulletSound.stop();
+  bossBulletSound.stop();
   preciseBulletTimer = 0;
   lineColour = "white";
   invincibilityTimer = 0;
